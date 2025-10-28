@@ -5,15 +5,18 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/form.css') }}">
     <style>
-        .dashboard-container { padding: 40px 20px; }
-        .section-container { margin-top: 40px; } .section-container h3 { margin-bottom: 20px; }
-        .quote-item { background-color: #fff; border: 1px solid #ddd; padding: 15px; margin-bottom: 10px; border-radius: 5px; text-decoration: none; color: inherit; display: block; transition: box-shadow 0.2s ease; }
-        .quote-item:hover { box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
-        .quote-item strong { color: #0056b3; }
-        .status-badge { padding: 3px 8px; font-size: 0.8rem; border-radius: 12px; color: #fff; font-weight: bold; }
-        .status-Pendente { background-color: #ffc107; color: #333; }
-        .status-Respondido { background-color: #28a745; }
-    </style>
+    .dashboard-container { padding: 40px 20px; }
+    .section-container { margin-top: 40px; } .section-container h3 { margin-bottom: 20px; }
+    .quote-item { background-color: #fff; border: 1px solid #ddd; padding: 15px; margin-bottom: 10px; border-radius: 5px; text-decoration: none; color: inherit; display: block; transition: box-shadow 0.2s ease; }
+    .quote-item:hover { box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
+    .quote-item strong { color: #0056b3; }
+    .status-badge { padding: 3px 8px; font-size: 0.8rem; border-radius: 12px; color: #fff; font-weight: bold; }
+    .status-Pendente { background-color: #ffc107; color: #333; }
+    .status-Respondido { background-color: #007bff; }
+    /* NOVOS ESTILOS */
+    .status-Aceito { background-color: #28a745; }
+    .status-Recusado { background-color: #dc3545; }
+</style>
 </head>
 <body>
     <header class="main-header"><div class="container"><a href="{{ url_for('home') }}" style="text-decoration: none;"><h1 class="logo">Connecta B2B</h1></a><nav class="main-nav"><ul><li><a href="{{ url_for('products') }}">Marketplace</a></li><li><strong>Olá, {{ session.company_name }}</strong></li><li><a href="{{ url_for('logout') }}" class="login-button">Sair</a></li></ul></nav></div></header>
@@ -22,18 +25,39 @@
         <h2>Painel de Controle</h2>
 
         {% if session.user_type == 'supplier' %}
-            <p>Você está logado como <strong>Fornecedor</strong>.</p>
-            <a href="{{ url_for('add_product') }}" class="cta-button" style="display: inline-block; text-decoration: none; margin-top: 20px;">Adicionar Novo Produto</a>
-            <div class="section-container">
-                <h3>Solicitações de Cotação Recebidas</h3>
-                {% if quotes %}{% for quote in quotes %}
-                    <a href="{{ url_for('quote_detail', quote_id=quote.id) }}" class="quote-item">
-                       <p><strong>Produto:</strong> {{ quote.product.name }} | <strong>Comprador:</strong> {{ quote.buyer.company_name }} | <strong>Status:</strong> <span class="status-badge status-{{ quote.status }}">{{ quote.status }}</span></p>
-                       <small>Recebido em: {{ quote.timestamp.strftime('%d/%m/%Y %H:%M') }}</small>
-                    </a>
-                {% endfor %}{% else %}<p>Nenhuma solicitação de cotação recebida ainda.</p>{% endif %}
-            </div>
-            <div class="section-container"><h3>Seus Produtos Cadastrados</h3> ... </div>
+    <p>Você está logado como <strong>Fornecedor</strong>.</p>
+    <a href="{{ url_for('add_product') }}" class="cta-button" style="display: inline-block; text-decoration: none; margin-top: 20px;">Adicionar Novo Produto</a>
+
+    <div class="section-container">
+        <h3>Solicitações de Cotação Recebidas</h3>
+        {% if quotes %}
+            {% for quote in quotes %}
+                <a href="{{ url_for('quote_detail', quote_id=quote.id) }}" class="quote-item">
+                   <p><strong>Produto:</strong> {{ quote.product.name }} | <strong>Comprador:</strong> {{ quote.buyer.company_name }} | <strong>Status:</strong> <span class="status-badge status-{{ quote.status }}">{{ quote.status }}</span></p>
+                   <small>Recebido em: {{ quote.timestamp.strftime('%d/%m/%Y %H:%M') }}</small>
+                </a>
+            {% endfor %}
+        {% else %}
+            <p>Nenhuma solicitação de cotação recebida ainda.</p>
+        {% endif %}
+    </div>
+
+    <div class="section-container">
+        <h3>Seus Produtos Cadastrados</h3>
+        {% if products %}
+            {% for product in products %}
+                <div class="product-item">
+                    <img src="{{ url_for('static', filename='uploads/' + product.image_filename) if product.image_filename else 'https://via.placeholder.com/80' }}" alt="{{ product.name }}" class="product-item-img">
+                    <div>
+                        <h4>{{ product.name }}</h4>
+                        <p><strong>Preço:</strong> R$ {{ "%.2f"|format(product.base_price) if product.base_price else 'Sob consulta' }}</p>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>Você ainda não cadastrou nenhum produto.</p>
+        {% endif %}
+    </div>
 
         {% elif session.user_type == 'buyer' %}
             <p>Você está logado como <strong>Comprador</strong>.</p>

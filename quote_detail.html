@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalhes da Cotação #{{ quote.id }} - Connecta B2B</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/form.css') }}">
+    <style>
+        .quote-detail-grid { display: grid; grid-template-columns: 1fr; gap: 30px; margin-top: 40px; }
+        .detail-card { background-color: #fff; padding: 25px; border-radius: 8px; border: 1px solid #e0e0e0; }
+        .detail-card h3 { border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; margin-bottom: 20px; }
+        .detail-card p { margin-bottom: 10px; line-height: 1.7; }
+        .detail-card strong { color: #333; }
+        .status-badge { padding: 5px 10px; border-radius: 15px; color: #fff; font-weight: bold; }
+        .status-Pendente { background-color: #ffc107; color: #333; }
+        .status-Respondido { background-color: #28a745; }
+    </style>
+</head>
+<body>
+    <header class="main-header">
+        <div class="container">
+            <a href="{{ url_for('dashboard') }}" style="text-decoration: none;"><h1 class="logo">Connecta B2B</h1></a>
+            <nav class="main-nav">
+                <ul><li><a href="{{ url_for('dashboard') }}">Meu Painel</a></li><li><a href="{{ url_for('logout') }}" class="login-button">Sair</a></li></ul>
+            </nav>
+        </div>
+    </header>
+    <main class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}{% for category, message in messages %}<div class="flash-messages" style="margin-top: 20px;"><li class="{{ category }}">{{ message }}</li></div>{% endfor %}{% endif %}
+        {% endwith %}
+
+        <h2 style="text-align: center; margin-top: 40px;">Detalhes da Cotação #{{ quote.id }}</h2>
+        
+        <div class="quote-detail-grid">
+            <div class="detail-card">
+                <h3>Solicitação do Comprador</h3>
+                <p><strong>Comprador:</strong> {{ quote.buyer.company_name }}</p>
+                <p><strong>Produto:</strong> <a href="{{ url_for('product_detail', product_id=quote.product_id) }}">{{ quote.product.name }}</a></p>
+                <p><strong>Quantidade Solicitada:</strong> {{ quote.quantity }}</p>
+                <p><strong>Data da Solicitação:</strong> {{ quote.timestamp.strftime('%d/%m/%Y %H:%M') }}</p>
+                <p><strong>Status:</strong> <span class="status-badge status-{{ quote.status }}">{{ quote.status }}</span></p>
+                {% if quote.message %}
+                    <p><strong>Mensagem do Comprador:</strong><br><em>{{ quote.message }}</em></p>
+                {% endif %}
+            </div>
+
+            <div class="detail-card">
+                <h3>Proposta do Fornecedor</h3>
+                {% if quote.status == 'Pendente' and session.user_type == 'supplier' %}
+                    <form action="{{ url_for('quote_detail', quote_id=quote.id) }}" method="POST">
+                        <div class="form-group">
+                            <label for="offered_price">Preço Total Ofertado (R$)</label>
+                            <input type="number" step="0.01" id="offered_price" name="offered_price" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="supplier_message">Sua Mensagem (Opcional)</label>
+                            <textarea name="supplier_message" id="supplier_message" rows="4" style="width: 100%; padding: 10px;"></textarea>
+                        </div>
+                        <button type="submit" class="submit-button">Enviar Proposta</button>
+                    </form>
+                {% elif quote.status == 'Respondido' %}
+                    <p><strong>Preço Ofertado:</strong> R$ {{ "%.2f"|format(quote.offered_price) }}</p>
+                    <p><strong>Data da Resposta:</strong> {{ quote.response_timestamp.strftime('%d/%m/%Y %H:%M') }}</p>
+                     {% if quote.supplier_message %}
+                        <p><strong>Mensagem do Fornecedor:</strong><br><em>{{ quote.supplier_message }}</em></p>
+                    {% endif %}
+                {% else %}
+                    <p>Aguardando resposta do fornecedor.</p>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+</body>
+</html>

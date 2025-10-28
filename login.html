@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Connecta B2B</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/form.css') }}">
+</head>
+<body>
+    <header class="main-header">
+        <div class="container">
+            <a href="{{ url_for('home') }}" style="text-decoration: none;"><h1 class="logo">Connecta B2B</h1></a>
+        </div>
+    </header>
+    <main>
+        <section class="form-section">
+            <div class="form-container">
+                <h2 class="section-title">Acessar Plataforma</h2>
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                  {% if messages %}
+                    <ul class="flash-messages">
+                    {% for category, message in messages %}
+                      <li class="{{ category }}">{{ message }}</li>
+                    {% endfor %}
+                    </ul>
+                  {% endif %}
+                {% endwith %}
+                <form action="{{ url_for('login') }}" method="POST">
+                    <div class="form-group">
+                        <label for="email">E-mail Comercial</label>
+                        <input type="email" id="email" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Senha</label>
+                        <input type="password" id="password" name="password" required>
+                    </div>
+                    <button type="submit" class="submit-button">Entrar</button>
+                </form>
+                <div class="form-link">
+                    <p>Não tem uma conta? <a href="{{ url_for('register') }}">Cadastre-se aqui</a></p>
+                </div>
+            </div>
+        </section>
+    </main>
+    <footer class="main-footer">
+        <div class="container">
+            <p>&copy; 2025 Connecta B2B. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+</body>
+</html>

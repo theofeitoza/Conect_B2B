@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Dashboard - Connecta B2B</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/form.css') }}">
+    <style>
+        .dashboard-container { padding: 40px 20px; }
+        .section-container { margin-top: 40px; } .section-container h3 { margin-bottom: 20px; }
+        .quote-item { background-color: #fff; border: 1px solid #ddd; padding: 15px; margin-bottom: 10px; border-radius: 5px; text-decoration: none; color: inherit; display: block; transition: box-shadow 0.2s ease; }
+        .quote-item:hover { box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
+        .quote-item strong { color: #0056b3; }
+        .status-badge { padding: 3px 8px; font-size: 0.8rem; border-radius: 12px; color: #fff; font-weight: bold; }
+        .status-Pendente { background-color: #ffc107; color: #333; }
+        .status-Respondido { background-color: #28a745; }
+    </style>
+</head>
+<body>
+    <header class="main-header"><div class="container"><a href="{{ url_for('home') }}" style="text-decoration: none;"><h1 class="logo">Connecta B2B</h1></a><nav class="main-nav"><ul><li><a href="{{ url_for('products') }}">Marketplace</a></li><li><strong>Olá, {{ session.company_name }}</strong></li><li><a href="{{ url_for('logout') }}" class="login-button">Sair</a></li></ul></nav></div></header>
+    <main class="container dashboard-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}{% for category, message in messages %}<div class="flash-messages"><li class="{{ category }}">{{ message }}</li></div>{% endfor %}{% endif %}{% endwith %}
+        <h2>Painel de Controle</h2>
+
+        {% if session.user_type == 'supplier' %}
+            <p>Você está logado como <strong>Fornecedor</strong>.</p>
+            <a href="{{ url_for('add_product') }}" class="cta-button" style="display: inline-block; text-decoration: none; margin-top: 20px;">Adicionar Novo Produto</a>
+            <div class="section-container">
+                <h3>Solicitações de Cotação Recebidas</h3>
+                {% if quotes %}{% for quote in quotes %}
+                    <a href="{{ url_for('quote_detail', quote_id=quote.id) }}" class="quote-item">
+                       <p><strong>Produto:</strong> {{ quote.product.name }} | <strong>Comprador:</strong> {{ quote.buyer.company_name }} | <strong>Status:</strong> <span class="status-badge status-{{ quote.status }}">{{ quote.status }}</span></p>
+                       <small>Recebido em: {{ quote.timestamp.strftime('%d/%m/%Y %H:%M') }}</small>
+                    </a>
+                {% endfor %}{% else %}<p>Nenhuma solicitação de cotação recebida ainda.</p>{% endif %}
+            </div>
+            <div class="section-container"><h3>Seus Produtos Cadastrados</h3> ... </div>
+
+        {% elif session.user_type == 'buyer' %}
+            <p>Você está logado como <strong>Comprador</strong>.</p>
+            <a href="{{ url_for('products') }}" class="cta-button" style="text-decoration: none;">Acessar Marketplace</a>
+            <div class="section-container">
+                <h3>Minhas Solicitações de Cotação</h3>
+                 {% if quotes %}{% for quote in quotes %}
+                    <a href="{{ url_for('quote_detail', quote_id=quote.id) }}" class="quote-item">
+                       <p><strong>Produto:</strong> {{ quote.product.name }} | <strong>Fornecedor:</strong> {{ quote.quote_supplier.company_name }} | <strong>Status:</strong> <span class="status-badge status-{{ quote.status }}">{{ quote.status }}</span></p>
+                       {% if quote.status == 'Respondido' %}
+                        <p><strong>Preço Ofertado: R$ {{ "%.2f"|format(quote.offered_price) }}</strong></p>
+                       {% endif %}
+                       <small>Enviado em: {{ quote.timestamp.strftime('%d/%m/%Y %H:%M') }}</small>
+                    </a>
+                {% endfor %}{% else %}<p>Você ainda não enviou nenhuma solicitação de cotação.</p>{% endif %}
+            </div>
+        {% endif %}
+    </main>
+</body>
+</html>

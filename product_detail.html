@@ -2,65 +2,62 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ product.name }} - Connecta B2B</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/form.css') }}">
     <style>
-        .product-detail-container { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 40px; }
-        .product-image-large { width: 100%; height: auto; border-radius: 8px; background-color: #f0f0f0; }
+        .product-detail-container { display: grid; grid-template-columns: 1fr 1.2fr; gap: 40px; margin-top: 40px; }
+        .image-gallery .main-image img { width: 100%; height: auto; max-height: 450px; object-fit: contain; border-radius: 8px; border: 1px solid #ddd; background-color: #f0f0f0; }
+        .image-thumbnails { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+        .image-thumbnails img { width: 80px; height: 80px; object-fit: cover; border-radius: 5px; cursor: pointer; border: 2px solid transparent; }
+        .image-thumbnails img.active { border-color: #007bff; }
         .product-info h2 { font-size: 2rem; color: #0056b3; }
         .product-info .supplier-name { color: #555; margin-bottom: 20px; }
-        .product-info .category { font-weight: bold; }
         .product-info .price { font-size: 1.5rem; font-weight: bold; margin: 20px 0; }
         .quote-form-container { background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-top: 30px; }
+        .verified-seal-small { color: #28a745; font-weight: bold; }
     </style>
 </head>
 <body>
     <header class="main-header">
         <div class="container">
-            <a href="{{ url_for('dashboard') }}" style="text-decoration: none;"><h1 class="logo">Connecta B2B</h1></a>
+            <a href="{{ url_for('home') }}" style="text-decoration: none;"><h1 class="logo">Connecta B2B</h1></a>
             <nav class="main-nav">
                 <ul>
                     <li><a href="{{ url_for('products') }}">Marketplace</a></li>
-                    <li><a href="{{ url_for('dashboard') }}">Meu Painel</a></li>
+                    <li><a href="{{ url_for('notifications') }}" style="position: relative; padding: 5px;">&#128276; {% if unread_notifications > 0 %}<span style="position: absolute; top: 0; right: -5px; background: red; color: white; border-radius: 50%; padding: 2px 5px; font-size: 0.7rem;">{{ unread_notifications }}</span>{% endif %}</a></li>
+                    <li><a href="{{ url_for('company_profile', company_id=session.company_id) }}">Meu Perfil</a></li>
+                    {% if session.is_admin %}<li><a href="{{ url_for('admin.index') }}" style="color: #ffc107; font-weight: bold;">Painel Admin</a></li>{% endif %}
+                    <li><a href="{{ url_for('dashboard') }}"><strong>Olá, {{ session.company_name }}</strong></a></li>
                     <li><a href="{{ url_for('logout') }}" class="login-button">Sair</a></li>
                 </ul>
             </nav>
         </div>
     </header>
     <main class="container">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            {% for category, message in messages %}
-              <div class="flash-messages" style="margin-top: 20px;"><li class="{{ category }}">{{ message }}</li></div>
-            {% endfor %}
-          {% endif %}
-        {% endwith %}
-
         <div class="product-detail-container">
-            <div class="product-image">
-                <img src="{{ url_for('static', filename='uploads/' + product.image_filename) if product.image_filename else 'https://via.placeholder.com/500' }}" alt="{{ product.name }}" class="product-image-large">
+            <div class="image-gallery">
+                <div class="main-image">
+                    {% if product.images %}<img src="{{ url_for('static', filename='uploads/' + product.images[0].filename) }}" alt="{{ product.name }}" id="main-product-image">
+                    {% else %}<img src="https://via.placeholder.com/450" alt="Sem Imagem" id="main-product-image">{% endif %}
+                </div>
+                <div class="image-thumbnails">
+                    {% for image in product.images %}<img src="{{ url_for('static', filename='uploads/' + image.filename) }}" alt="Thumbnail" class="{{ 'active' if loop.first }}" onclick="changeImage(this)">{% endfor %}
+                </div>
             </div>
             <div class="product-info">
                 <h2>{{ product.name }}</h2>
-                <p class="supplier-name">Fornecido por: <strong>{{ product.supplier.company_name }}</strong></p>
-                <p class="category">Categoria: {{ product.category }}</p>
-                <p class="description">{{ product.description }}</p>
+                <p class="supplier-name">Fornecido por: <a href="{{ url_for('company_profile', company_id=product.supplier_id) }}"><strong>{{ product.supplier.company_name }} {% if product.supplier.is_verified %}<span class="verified-seal-small" title="Empresa Verificada">✔</span>{% endif %}</strong></a></p>
+                <p><strong>Categoria:</strong> {{ product.category }}</p>
+                <p>{{ product.description }}</p>
                 <p class="price">Preço Base: R$ {{ "%.2f"|format(product.base_price) if product.base_price else 'Sob consulta' }}</p>
-
                 {% if session.user_type == 'buyer' and session.company_id != product.supplier.id %}
                 <div class="quote-form-container">
                     <h4>Solicitar Cotação</h4>
-                    <form action="{{ url_for('product_detail', product_id=product.id) }}" method="POST">
-                        <div class="form-group">
-                            <label for="quantity">Quantidade Desejada</label>
-                            <input type="number" id="quantity" name="quantity" class="form-control" required min="1">
-                        </div>
-                        <div class="form-group">
-                            <label for="message">Mensagem Adicional (Opcional)</label>
-                            <textarea name="message" id="message" rows="3" class="form-control" style="width: 100%; padding: 10px;"></textarea>
-                        </div>
+                    <form action="{{ url_for('product_detail', product_id=product.id) }}" method="POST" enctype="multipart/form-data">
+                        <div class="form-group"><label for="quantity">Quantidade Desejada</label><input type="number" id="quantity" class="form-control" name="quantity" required min="1"></div>
+                        <div class="form-group"><label for="message">Mensagem Adicional</label><textarea name="message" id="message" rows="3" style="width: 100%; padding: 10px;"></textarea></div>
+                        <div class="form-group"><label for="attachment">Anexar Arquivo</label><input type="file" id="attachment" name="attachment"></div>
                         <button type="submit" class="submit-button">Enviar Solicitação</button>
                     </form>
                 </div>
@@ -68,5 +65,12 @@
             </div>
         </div>
     </main>
+    <script>
+        function changeImage(thumbnail) {
+            document.getElementById('main-product-image').src = thumbnail.src;
+            document.querySelectorAll('.image-thumbnails img').forEach(img => img.classList.remove('active'));
+            thumbnail.classList.add('active');
+        }
+    </script>
 </body>
 </html>

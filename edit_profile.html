@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Editar Perfil da Empresa - Connecta B2B</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/form.css') }}">
+</head>
+<body>
+    <header class="main-header">
+        <div class="container">
+            <a href="{{ url_for('dashboard') }}" style="text-decoration: none;"><h1 class="logo">Connecta B2B</h1></a>
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="{{ url_for('products') }}">Marketplace</a></li>
+                    <li><a href="{{ url_for('notifications') }}" style="position: relative; padding: 5px;">&#128276; {% if unread_notifications > 0 %}<span style="position: absolute; top: 0; right: -5px; background: red; color: white; border-radius: 50%; padding: 2px 5px; font-size: 0.7rem;">{{ unread_notifications }}</span>{% endif %}</a></li>
+                    <li><a href="{{ url_for('dashboard') }}"><strong>Olá, {{ session.company_name }}</strong></a></li>
+                    <li><a href="{{ url_for('logout') }}" class="login-button">Sair</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main>
+        <section class="form-section">
+            <div class="form-container">
+                <h2 class="section-title">Editar Perfil da Empresa</h2>
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <p>Logo Atual:</p>
+                    <img src="{{ url_for('static', filename='uploads/' + company.logo_filename) if company.logo_filename else 'https://via.placeholder.com/150' }}" alt="Logo da Empresa" style="max-width: 150px; border-radius: 50%;">
+                </div>
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="form-group"><label for="logo">Alterar Logo</label><input type="file" id="logo" name="logo" accept="image/png, image/jpeg, image/gif"></div>
+                    <div class="form-group"><label for="company_name">Nome da Empresa</label><input type="text" id="company_name" name="company_name" value="{{ company.company_name }}" required></div>
+                    <div class="form-group"><label for="description">Descrição ("Sobre Nós")</label><textarea id="description" name="description" rows="5" style="width:100%; padding:10px;">{{ company.description or '' }}</textarea></div>
+                    <div class="form-group"><label for="website">Website</label><input type="url" id="website" name="website" value="{{ company.website or '' }}" placeholder="https://suaempresa.com"></div>
+                    <div class="form-group"><label for="address">Endereço</label><input type="text" id="address" name="address" value="{{ company.address or '' }}"></div>
+                    <div class="form-group"><label for="certifications">Certificações (separadas por vírgula)</label><input type="text" id="certifications" name="certifications" value="{{ company.certifications or '' }}"></div>
+                    <button type="submit" class="submit-button">Salvar Alterações</button>
+                </form>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

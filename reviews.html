@@ -1,0 +1,32 @@
+{% extends 'admin/layout.html' %}
+
+{% block title %}Moderar Avaliações{% endblock %}
+
+{% block content %}
+    <h1>Moderar Avaliações</h1>
+    <p>Todas as avaliações publicadas na plataforma.</p>
+
+    <div style="margin-top: 20px;">
+        {% for review in reviews %}
+            <div style="background-color: #fff; border: 1px solid #ddd; padding: 15px; border-radius: 5px; margin-bottom: 15px;">
+                <p>
+                    <strong>Produto:</strong> <a href="{{ url_for('product_detail', product_id=review.quote.product_id) }}" target="_blank">{{ review.quote.product.name }}</a><br>
+                    <strong>Fornecedor:</strong> <a href="{{ url_for('company_profile', company_id=review.supplier_id) }}" target="_blank">{{ review.reviewed_supplier.company_name }}</a><br>
+                    <strong>Avaliador:</strong> <a href="{{ url_for('company_profile', company_id=review.reviewer_id) }}" target="_blank">{{ review.quote.buyer.company_name }}</a>
+                </p>
+                <p>
+                    <strong>Nota:</strong> <span style="color: #ffc107;">{% for i in range(review.rating) %}&#9733;{% endfor %}</span>
+                </p>
+                {% if review.comment %}
+                    <p><strong>Comentário:</strong> <em>"{{ review.comment }}"</em></p>
+                {% endif %}
+                <small>Publicado em: {{ review.timestamp.strftime('%d/%m/%Y') }}</small>
+                <form action="{{ url_for('admin.delete_review', review_id=review.id) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir esta avaliação?');" style="margin-top: 10px;">
+                    <button type="submit" style="color: white; background-color: #dc3545; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px;">Excluir Avaliação</button>
+                </form>
+            </div>
+        {% else %}
+            <p>Nenhuma avaliação encontrada.</p>
+        {% endfor %}
+    </div>
+{% endblock %}

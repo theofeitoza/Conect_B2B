@@ -3,10 +3,11 @@
 document.addEventListener('DOMContentLoaded', function() {
 
     // Exibe uma mensagem no console do navegador para confirmar que o script foi carregado.
-    console.log("Connecta B2B - JavaScript carregado com sucesso!");
+    console.log("Connecta B2B - JavaScript principal carregado com sucesso!");
 
-    // Seleciona o botão principal de chamada para ação (Call to Action).
-    const ctaButton = document.querySelector('.cta-button');
+    // Seleciona o botão principal de chamada para ação (Call to Action) na página inicial.
+    // Este código era de uma versão antiga, mas mantido para referência.
+    const ctaButton = document.querySelector('.cta-button-old-logic'); // Classe não mais usada
 
     // Verifica se o botão foi encontrado na página antes de adicionar um evento.
     if (ctaButton) {

@@ -1,0 +1,67 @@
+{% extends 'admin/layout.html' %}
+
+{% block title %}Visualizar Cotações{% endblock %}
+
+{% block content %}
+    <style>
+        .filter-bar { background-color: #fff; padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 1px solid #ddd; display: flex; align-items: center; gap: 15px; }
+        .filter-bar label { font-weight: bold; }
+        .filter-bar select, .filter-bar button { padding: 8px; border-radius: 4px; border: 1px solid #ccc; }
+        .filter-bar button { background-color: #007bff; color: white; cursor: pointer; }
+        .status-badge { padding: 3px 8px; font-size: 0.8rem; border-radius: 12px; color: #fff; font-weight: bold; }
+        .status-Pendente { background-color: #ffc107; color: #333; }
+        .status-Respondido { background-color: #007bff; }
+        .status-Aceito { background-color: #28a745; }
+        .status-Recusado { background-color: #dc3545; }
+    </style>
+
+    <h1>Visualizar Todas as Cotações</h1>
+    <p>Acompanhe todas as negociações da plataforma.</p>
+
+    <div class="filter-bar">
+        <form method="GET" action="{{ url_for('admin.quotes') }}">
+            <label for="status_filter">Filtrar por Status:</label>
+            <select name="status_filter" id="status_filter">
+                <option value="">Todos</option>
+                <option value="Pendente" {% if current_filter == 'Pendente' %}selected{% endif %}>Pendente</option>
+                <option value="Respondido" {% if current_filter == 'Respondido' %}selected{% endif %}>Respondido</option>
+                <option value="Aceito" {% if current_filter == 'Aceito' %}selected{% endif %}>Aceito</option>
+                <option value="Recusado" {% if current_filter == 'Recusado' %}selected{% endif %}>Recusado</option>
+            </select>
+            <button type="submit">Filtrar</button>
+        </form>
+    </div>
+
+    <table style="width: 100%; border-collapse: collapse; margin-top: 20px; background-color: #fff;">
+        <thead>
+            <tr style="background-color: #f2f2f2;">
+                <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">ID</th>
+                <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">Produto</th>
+                <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">Comprador</th>
+                <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">Fornecedor</th>
+                <th style="padding: 12px; border: 1px solid #ddd;">Status</th>
+                <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">Data</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for quote in quotes %}
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #ddd;">
+                        <a href="{{ url_for('quote_detail', quote_id=quote.id) }}" target="_blank">#{{ quote.id }}</a>
+                    </td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">{{ quote.product.name }}</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">{{ quote.buyer.company_name }}</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">{{ quote.supplier.company_name }}</td>
+                    <td style="padding: 10px; border: 1px solid #ddd; text-align: center;">
+                        <span class="status-badge status-{{ quote.status }}">{{ quote.status }}</span>
+                    </td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">{{ quote.timestamp.strftime('%d/%m/%Y') }}</td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="6" style="padding: 10px; border: 1px solid #ddd; text-align: center;">Nenhuma cotação encontrada com este filtro.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

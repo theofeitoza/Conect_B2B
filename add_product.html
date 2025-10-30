@@ -2,7 +2,6 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Adicionar Produto - Connecta B2B</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/form.css') }}">
@@ -13,7 +12,9 @@
             <a href="{{ url_for('dashboard') }}" style="text-decoration: none;"><h1 class="logo">Connecta B2B</h1></a>
             <nav class="main-nav">
                 <ul>
-                    <li><a href="{{ url_for('dashboard') }}">Meu Painel</a></li>
+                    <li><a href="{{ url_for('products') }}">Marketplace</a></li>
+                    <li><a href="{{ url_for('notifications') }}" style="position: relative; padding: 5px;">&#128276; {% if unread_notifications > 0 %}<span style="position: absolute; top: 0; right: -5px; background: red; color: white; border-radius: 50%; padding: 2px 5px; font-size: 0.7rem;">{{ unread_notifications }}</span>{% endif %}</a></li>
+                    <li><a href="{{ url_for('dashboard') }}"><strong>Olá, {{ session.company_name }}</strong></a></li>
                     <li><a href="{{ url_for('logout') }}" class="login-button">Sair</a></li>
                 </ul>
             </nav>
@@ -23,36 +24,13 @@
         <section class="form-section">
             <div class="form-container">
                 <h2 class="section-title">Cadastrar Novo Produto</h2>
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                  {% if messages %}
-                    <ul class="flash-messages">
-                    {% for category, message in messages %}
-                      <li class="{{ category }}">{{ message }}</li>
-                    {% endfor %}
-                    </ul>
-                  {% endif %}
-                {% endwith %}
-                <form action="{{ url_for('add_product') }}" method="POST" enctype="multipart/form-data">
-                    <div class="form-group">
-                        <label for="name">Nome do Produto</label>
-                        <input type="text" id="name" name="name" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="description">Descrição Técnica</label>
-                        <textarea id="description" name="description" rows="4" style="width: 100%; padding: 10px; font-size: 1rem; border: 1px solid #ccc; border-radius: 4px;" required></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="product_image">Imagem do Produto</label>
-                        <input type="file" id="product_image" name="product_image" accept="image/png, image/jpeg, image/gif">
-                    </div>
-                    <div class="form-group">
-                        <label for="category">Categoria</label>
-                        <input type="text" id="category" name="category" placeholder="Ex: Componentes Eletrônicos, Aço Carbono" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="base_price">Preço Base (R$)</label>
-                        <input type="number" step="0.01" id="base_price" name="base_price" placeholder="Deixe em branco para 'preço sob consulta'">
-                    </div>
+                {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}<ul class="flash-messages">{% for c, m in messages %}<li class="{{ c }}">{{ m }}</li>{% endfor %}</ul>{% endif %}{% endwith %}
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="form-group"><label for="name">Nome do Produto</label><input type="text" id="name" name="name" required></div>
+                    <div class="form-group"><label for="description">Descrição Técnica</label><textarea id="description" name="description" rows="4" style="width: 100%; padding: 10px;" required></textarea></div>
+                    <div class="form-group"><label for="product_images">Imagens do Produto (múltiplas)</label><input type="file" id="product_images" name="product_images" accept="image/png, image/jpeg, image/gif" multiple></div>
+                    <div class="form-group"><label for="category">Categoria</label><input type="text" id="category" name="category" placeholder="Ex: Componentes Eletrônicos" required></div>
+                    <div class="form-group"><label for="base_price">Preço Base (R$)</label><input type="number" step="0.01" id="base_price" name="base_price" placeholder="Deixe em branco para 'sob consulta'"></div>
                     <button type="submit" class="submit-button">Adicionar Produto</button>
                 </form>
             </div>

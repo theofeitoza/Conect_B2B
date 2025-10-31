@@ -1,0 +1,64 @@
+{% extends 'admin/layout.html' %}
+
+{% block title %}Gerenciar Anúncios{% endblock %}
+
+{% block content %}
+    <style>
+        .action-button {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            color: white;
+            font-weight: bold;
+            font-size: 0.9rem;
+            display: inline-block;
+            text-align: center;
+        }
+        .btn-activate {
+            background-color: #28a745; /* Verde */
+        }
+        .btn-deactivate {
+            background-color: #ffc107; /* Amarelo */
+            color: #212529;
+        }
+        .btn-edit {
+            background-color: #007bff; /* Azul */
+        }
+        .btn-delete {
+            background-color: #dc3545; /* Vermelho */
+        }
+    </style>
+
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h1>Gerenciar Anúncios</h1>
+        <a href="{{ url_for('admin.new_announcement') }}" class="action-button btn-activate">Criar Novo Anúncio</a>
+    </div>
+    <p>Crie e gerencie anúncios que serão exibidos no dashboard de todos os usuários.</p>
+
+    <div style="margin-top: 20px;">
+        {% for ann in announcements %}
+            <div style="background-color: #fff; border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                <div>
+                    <h4>{{ ann.title }} {% if ann.is_active %}<span style="color: #28a745; font-size: 0.9rem;">(Ativo)</span>{% endif %}</h4>
+                    <p>{{ ann.content|truncate(150) }}</p>
+                    <small>Criado em: {{ ann.timestamp.strftime('%d/%m/%Y') }}</small>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <form action="{{ url_for('admin.toggle_announcement', announcement_id=ann.id) }}" method="POST">
+                        <button type="submit" class="action-button {{ 'btn-deactivate' if ann.is_active else 'btn-activate' }}">
+                            {{ 'Desativar' if ann.is_active else 'Ativar' }}
+                        </button>
+                    </form>
+                    <a href="{{ url_for('admin.edit_announcement', announcement_id=ann.id) }}" class="action-button btn-edit">Editar</a>
+                    <form action="{{ url_for('admin.delete_announcement', announcement_id=ann.id) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este anúncio?');">
+                        <button type="submit" class="action-button btn-delete">Excluir</button>
+                    </form>
+                </div>
+            </div>
+        {% else %}
+            <p>Nenhum anúncio criado ainda.</p>
+        {% endfor %}
+    </div>
+{% endblock %}

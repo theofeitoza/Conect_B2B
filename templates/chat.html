@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat de Negociação #{{ quote.id }} - Connecta B2B</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .chat-container { max-width: 800px; margin: 40px auto; border: 1px solid #ddd; border-radius: 8px; display: flex; flex-direction: column; height: 80vh; background-color: #fff; }
+        .chat-header { padding: 15px; border-bottom: 1px solid #ddd; background-color: #f8f9fa; }
+        .chat-header h3 { margin: 0; font-size: 1.2rem; }
+        .chat-header p { margin: 5px 0 0 0; color: #666; font-size: 0.9rem; }
+        .chat-messages { flex-grow: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .message-bubble { max-width: 70%; padding: 10px 15px; border-radius: 18px; line-height: 1.4; word-wrap: break-word; }
+        .message-bubble.sent { background-color: #007bff; color: white; align-self: flex-end; }
+        .message-bubble.received { background-color: #e9ecef; color: #333; align-self: flex-start; }
+        .message-info { font-size: 0.8rem; color: #999; margin-top: 5px; }
+        .message-bubble.sent .message-info { color: #d1e7ff; }
+        .typing-indicator { color: #888; font-style: italic; padding: 5px 20px; font-size: 0.9rem; height: 20px; }
+        .chat-input-form { padding: 15px; border-top: 1px solid #ddd; display: flex; gap: 10px; }
+        .chat-input-form input { flex-grow: 1; border: 1px solid #ccc; padding: 10px 15px; border-radius: 20px; font-size: 1rem; }
+        .chat-input-form button { background: #007bff; border: none; color: white; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; transition: background-color 0.2s; }
+        .chat-input-form button:hover { background-color: #0056b3; }
+    </style>
+</head>
+<body>
+    <header class="main-header">
+        <div class="container">
+            <a href="{{ url_for('dashboard') }}" style="text-decoration: none;"><h1 class="logo">Connecta B2B</h1></a>
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="{{ url_for('products') }}">Marketplace</a></li>
+                    <li><a href="{{ url_for('dashboard') }}">Meu Painel</a></li>
+                    <li><a href="{{ url_for('logout') }}" class="login-button">Sair</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <div class="chat-container" data-quote-id="{{ quote.id }}" data-company-name="{{ session.company_name }}">
+        <div class="chat-header">
+            <h3>Negociação para: {{ quote.product.name }}</h3>
+            <p>Entre {{ quote.buyer.company_name }} e {{ quote.supplier.company_name }}</p>
+        </div>
+        <div class="chat-messages" id="messages">
+            {% for msg in messages %}
+                <div class="message-bubble {{ 'sent' if msg.sender_id == session.company_id else 'received' }}">
+                    <div>{{ msg.message }}</div>
+                    <div class="message-info">{{ msg.sender.company_name }} - {{ msg.timestamp.strftime('%H:%M') }}</div>
+                </div>
+            {% endfor %}
+        </div>
+        <div class="typing-indicator" id="typing-indicator"></div>
+        <form class="chat-input-form" id="message-form">
+            <input type="text" id="message-input" placeholder="Digite sua mensagem..." autocomplete="off">
+            <button type="submit" aria-label="Enviar Mensagem">&#10148;</button>
+        </form>
+    </div>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+</body>
+</html>

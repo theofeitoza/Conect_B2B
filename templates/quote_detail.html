@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Detalhes da Cotação #{{ quote.id }} - Connecta B2B</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/form.css') }}">
+    <style>
+        .quote-detail-grid { display: grid; grid-template-columns: 1fr; gap: 30px; margin-top: 40px; }
+        .detail-card { background-color: #fff; padding: 25px; border-radius: 8px; border: 1px solid #e0e0e0; }
+        .detail-card h3 { border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; margin-bottom: 20px; }
+        .detail-card p { margin-bottom: 10px; line-height: 1.7; } .detail-card strong { color: #333; }
+        .status-badge { padding: 5px 10px; border-radius: 15px; color: #fff; font-weight: bold; font-size: 0.9rem; }
+        .status-Pendente { background-color: #ffc107; color: #333; } .status-Respondido { background-color: #007bff; }
+        .status-Aceito { background-color: #28a745; } .status-Recusado { background-color: #dc3545; }
+        .action-buttons { display: flex; gap: 15px; margin-top: 20px; }
+        .action-buttons .btn { border: none; padding: 12px 25px; border-radius: 5px; font-weight: bold; cursor: pointer; text-decoration: none; color: white; font-size: 1rem; }
+        .btn-accept { background-color: #28a745; } .btn-decline { background-color: #dc3545; }
+        .review-button { background-color: #17a2b8; color: white; text-align: center; display: inline-block; }
+        .chat-button { background-color: #6c757d; color: white; text-align: center; display: block; margin-top: 20px; padding: 15px; border-radius: 5px; text-decoration:none; }
+        .verified-seal-small { color: #28a745; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <header class="main-header">
+        <div class="container">
+            <a href="{{ url_for('home') }}" style="text-decoration: none;"><h1 class="logo">Connecta B2B</h1></a>
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="{{ url_for('products') }}">Marketplace</a></li>
+                    {% if session.user_type == 'buyer' %}
+                    <li><a href="{{ url_for('view_cart') }}" style="position: relative; padding: 5px;">&#128722; {% if cart_item_count > 0 %}<span style="position: absolute; top: 0; right: -5px; background: #007bff; color: white; border-radius: 50%; padding: 2px 5px; font-size: 0.7rem;">{{ cart_item_count }}</span>{% endif %}</a></li>
+                    {% endif %}
+                    <li><a href="{{ url_for('notifications') }}" style="position: relative; padding: 5px;">&#128276; {% if unread_notifications > 0 %}<span style="position: absolute; top: 0; right: -5px; background: red; color: white; border-radius: 50%; padding: 2px 5px; font-size: 0.7rem;">{{ unread_notifications }}</span>{% endif %}</a></li>
+                    <li><a href="{{ url_for('company_profile', company_id=session.company_id) }}">Meu Perfil</a></li>
+                    {% if session.is_admin %}<li><a href="{{ url_for('admin.index') }}" style="color: #ffc107; font-weight: bold;">Painel Admin</a></li>{% endif %}
+                    <li><a href="{{ url_for('dashboard') }}"><strong>Olá, {{ session.company_name }}</strong></a></li>
+                    <li><a href="{{ url_for('logout') }}" class="login-button">Sair</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main class="container">
+        <h2 style="text-align: center; margin-top: 40px;">Detalhes da Cotação #{{ quote.id }}</h2>
+        {% if quote.group %}
+        <p style="text-align: center;">Esta cotação pertence ao grupo: <strong>{{ quote.group.name }}</strong></p>
+        {% endif %}
+        <div class="quote-detail-grid">
+            <div class="detail-card">
+                <h3>Resumo da Solicitação</h3>
+                <p><strong>Comprador:</strong> <a href="{{ url_for('company_profile', company_id=quote.buyer_id) }}">{{ quote.buyer.company_name }} {% if quote.buyer.is_verified %}<span class="verified-seal-small" title="Empresa Verificada">✔</span>{% endif %}</a></p>
+                <p><strong>Fornecedor:</strong> <a href="{{ url_for('company_profile', company_id=quote.supplier_id) }}">{{ quote.supplier.company_name }} {% if quote.supplier.is_verified %}<span class="verified-seal-small" title="Empresa Verificada">✔</span>{% endif %}</a></p>
+                <p><strong>Produto:</strong> <a href="{{ url_for('product_detail', product_id=quote.product_id) }}">{{ quote.product.name }}</a></p>
+                <p><strong>Quantidade Solicitada:</strong> {{ quote.quantity }}</p>
+                <p><strong>Status:</strong> <span class="status-badge status-{{ quote.status }}">{{ quote.status }}</span></p>
+                {% if quote.attachment_filename %}<p><strong>Anexo:</strong> <a href="{{ url_for('download_attachment', filename=quote.attachment_filename) }}" target="_blank">Baixar Arquivo</a></p>{% endif %}
+                <a href="{{ url_for('chat', quote_id=quote.id) }}" class="chat-button">Abrir Chat de Negociação</a>
+            </div>
+            <div class="detail-card">
+                <h3>Proposta e Ações</h3>
+                {% if quote.status == 'Pendente' and session.user_type == 'supplier' %}
+                    <p>A negociação deve ser feita via chat. Use o formulário abaixo para a proposta final.</p>
+                    <form action="{{ url_for('quote_detail', quote_id=quote.id) }}" method="POST"><div class="form-group"><label for="offered_price">Preço Total Ofertado (R$)</label><input type="number" step="0.01" id="offered_price" name="offered_price" required></div><div class="form-group"><label for="delivery_date">Prazo de Entrega Estimado</label><input type="date" id="delivery_date" name="delivery_date"></div><button type="submit" class="submit-button">Enviar Proposta Final</button></form>
+                {% elif quote.status != 'Pendente' %}
+                    <p><strong>Preço Ofertado:</strong> R$ {{ "%.2f"|format(quote.offered_price) if quote.offered_price else 'N/A' }}</p>
+                    {% if quote.delivery_date %}<p><strong>Prazo de Entrega Estimado:</strong> {{ quote.delivery_date.strftime('%d/%m/%Y') }}</p>{% endif %}
+                    <p><strong>Data da Resposta:</strong> {{ quote.response_timestamp.strftime('%d/%m/%Y %H:%M') if quote.response_timestamp else 'N/A' }}</p>
+                {% else %}<p>Aguardando resposta do fornecedor.</p>{% endif %}
+                {% if session.user_type == 'buyer' and session.company_id == quote.buyer_id %}
+                    {% if quote.status == 'Respondido' %}
+                        <div class="action-buttons"><form action="{{ url_for('accept_quote', quote_id=quote.id) }}" method="POST"><button type="submit" class="btn btn-accept">Aceitar Proposta</button></form><form action="{{ url_for('decline_quote', quote_id=quote.id) }}" method="POST"><button type="submit" class="btn btn-decline">Recusar Proposta</button></form></div>
+                    {% endif %}
+                    {% if quote.status == 'Aceito' %}
+                        {% if not quote.review %}<div class="action-buttons" style="justify-content: center;"><a href="{{ url_for('add_review', quote_id=quote.id) }}" class="btn review-button">Deixar uma Avaliação</a></div>
+                        {% else %}<p style="text-align:center; margin-top: 20px; color: #28a745;"><em>Você já avaliou esta negociação.</em></p>{% endif %}
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </main>
+</body>
+</html>

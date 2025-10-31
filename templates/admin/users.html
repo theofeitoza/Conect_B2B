@@ -1,0 +1,64 @@
+{% extends 'admin/layout.html' %}
+
+{% block title %}Gerenciar Usuários{% endblock %}
+
+{% block content %}
+    <style>
+        .status-cell { font-weight: bold; text-align: center; }
+        .status-cell.ativo { color: #28a745; }
+        .status-cell.suspenso { color: #dc3545; }
+        .verification-icon { font-size: 1.2rem; font-weight: bold; }
+        .verification-icon.verified { color: #28a745; }
+        .verification-icon.unverified { color: #6c757d; }
+        .action-button { padding: 5px 10px; border-radius: 4px; border: 1px solid transparent; color: white; cursor: pointer; font-weight: bold; font-size: 0.9rem; width: 110px; text-align: center; }
+        .btn-verify { background-color: #007bff; }
+        .btn-unverify { background-color: #6c757d; }
+        .btn-suspend { background-color: #ffc107; color: #212529; border-color: #ffc107; }
+        .btn-reactivate { background-color: #28a745; }
+    </style>
+
+    <h1>Gerenciar Usuários</h1>
+    <table style="width: 100%; border-collapse: collapse; margin-top: 20px; background-color: #fff;">
+        <thead>
+            <tr style="background-color: #f2f2f2;">
+                <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">Empresa</th>
+                <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">Email</th>
+                <th style="padding: 12px; border: 1px solid #ddd;">Tipo</th>
+                <th style="padding: 12px; border: 1px solid #ddd;">Verificado</th>
+                <th style="padding: 12px; border: 1px solid #ddd;">Status</th>
+                <th style="padding: 12px; border: 1px solid #ddd;">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #ddd;">{{ user.company_name }}</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">{{ user.email }}</td>
+                    <td style="padding: 10px; border: 1px solid #ddd; text-align: center;">{{ user.user_type }}</td>
+                    <td style="padding: 10px; border: 1px solid #ddd; text-align: center;">
+                        <span class="verification-icon {{ 'verified' if user.is_verified else 'unverified' }}">
+                            {{ '✔' if user.is_verified else '✖' }}
+                        </span>
+                    </td>
+                    <td class="status-cell {{ 'ativo' if user.is_active else 'suspenso' }}">
+                        {{ 'Ativo' if user.is_active else 'Suspenso' }}
+                    </td>
+                    <td style="padding: 10px; border: 1px solid #ddd; display: flex; gap: 5px; justify-content: center;">
+                        <form action="{{ url_for('admin.toggle_verify', user_id=user.id) }}" method="POST">
+                            <button type="submit" class="action-button {{ 'btn-unverify' if user.is_verified else 'btn-verify' }}">
+                                {{ 'Desverificar' if user.is_verified else 'Verificar' }}
+                            </button>
+                        </form>
+                        {% if not user.is_admin %}
+                            <form action="{{ url_for('admin.toggle_active', user_id=user.id) }}" method="POST">
+                                <button type="submit" class="action-button {{ 'btn-suspend' if user.is_active else 'btn-reactivate' }}">
+                                    {{ 'Suspender' if user.is_active else 'Reativar' }}
+                                </button>
+                            </form>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

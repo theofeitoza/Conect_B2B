@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Notificações - Connecta B2B</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .page-container { padding: 40px 20px; }
+        .notification-list { background-color: #fff; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
+        .notification-item { border-bottom: 1px solid #eee; padding: 20px; transition: background-color 0.2s ease; }
+        .notification-item:last-child { border-bottom: none; }
+        .notification-item a { text-decoration: none; color: #333; font-size: 1.1rem; }
+        .notification-item:hover { background-color: #f8f9fa; }
+        .notification-item small { color: #666; margin-top: 5px; display: block; }
+    </style>
+</head>
+<body>
+    <header class="main-header">
+        <div class="container">
+            <a href="{{ url_for('dashboard') }}" style="text-decoration: none;"><h1 class="logo">Connecta B2B</h1></a>
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="{{ url_for('products') }}">Marketplace</a></li>
+                    <li><a href="{{ url_for('notifications') }}" style="position: relative; padding: 5px;">&#128276; {% if unread_notifications > 0 %}<span style="position: absolute; top: 0; right: -5px; background: red; color: white; border-radius: 50%; padding: 2px 5px; font-size: 0.7rem;">{{ unread_notifications }}</span>{% endif %}</a></li>
+                    <li><a href="{{ url_for('dashboard') }}"><strong>Olá, {{ session.company_name }}</strong></a></li>
+                    <li><a href="{{ url_for('logout') }}" class="login-button">Sair</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main class="container page-container">
+        <h2 style="margin-bottom: 30px;">Suas Notificações</h2>
+        <div class="notification-list">
+            {% for notification in notifications %}
+                <div class="notification-item">
+                    <a href="{{ notification.link or '#' }}">
+                        <p>{{ notification.message }}</p>
+                        <small>{{ notification.timestamp.strftime('%d/%m/%Y às %H:%M') }}</small>
+                    </a>
+                </div>
+            {% else %}
+                <div style="padding: 20px; text-align: center;">
+                    <p>Nenhuma notificação encontrada.</p>
+                </div>
+            {% endfor %}
+        </div>
+    </main>
+</body>
+</html>

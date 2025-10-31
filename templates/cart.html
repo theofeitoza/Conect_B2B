@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Carrinho de Cotação - Connecta B2B</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/form.css') }}">
+    <style>
+        .cart-container { padding: 40px 20px; }
+        .cart-table { width: 100%; border-collapse: collapse; margin-top: 20px; background-color: #fff; }
+        .cart-table th, .cart-table td { padding: 15px; border: 1px solid #ddd; text-align: left; }
+        .cart-table th { background-color: #f8f9fa; }
+        .cart-table img { width: 80px; height: 80px; object-fit: cover; border-radius: 5px; }
+        .quantity-input { width: 70px; padding: 8px; text-align: center; }
+        .remove-btn { color: #dc3545; background: none; border: none; cursor: pointer; font-size: 1.5rem; }
+        .cart-summary { margin-top: 30px; background-color: #fff; padding: 20px; border: 1px solid #ddd; border-radius: 8px; max-width: 500px; margin-left: auto; }
+        .cart-summary h3 { margin-top: 0; }
+    </style>
+</head>
+<body>
+    <header class="main-header">
+        <div class="container">
+            <a href="{{ url_for('home') }}" style="text-decoration: none;"><h1 class="logo">Connecta B2B</h1></a>
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="{{ url_for('products') }}">Marketplace</a></li>
+                    {% if session.user_type == 'buyer' %}
+                    <li><a href="{{ url_for('view_cart') }}" style="position: relative; padding: 5px;">&#128722; {% if cart_item_count > 0 %}<span style="position: absolute; top: 0; right: -5px; background: #007bff; color: white; border-radius: 50%; padding: 2px 5px; font-size: 0.7rem;">{{ cart_item_count }}</span>{% endif %}</a></li>
+                    {% endif %}
+                    <li><a href="{{ url_for('notifications') }}" style="position: relative; padding: 5px;">&#128276; {% if unread_notifications > 0 %}<span style="position: absolute; top: 0; right: -5px; background: red; color: white; border-radius: 50%; padding: 2px 5px; font-size: 0.7rem;">{{ unread_notifications }}</span>{% endif %}</a></li>
+                    <li><a href="{{ url_for('company_profile', company_id=session.company_id) }}">Meu Perfil</a></li>
+                    {% if session.is_admin %}<li><a href="{{ url_for('admin.index') }}" style="color: #ffc107; font-weight: bold;">Painel Admin</a></li>{% endif %}
+                    <li><a href="{{ url_for('dashboard') }}"><strong>Olá, {{ session.company_name }}</strong></a></li>
+                    <li><a href="{{ url_for('logout') }}" class="login-button">Sair</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main class="container cart-container">
+        <h2 style="text-align: center;">Carrinho de Cotação</h2>
+        {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}{% for c, m in messages %}<div class="flash-messages" style="margin-bottom:20px;"><li class="{{ c }}">{{ m }}</li></div>{% endfor %}{% endif %}{% endwith %}
+
+        {% if not cart_items %}
+            <p style="text-align: center; margin-top: 30px;">Seu carrinho de cotação está vazio.</p>
+            <div style="text-align: center; margin-top: 20px;"><a href="{{ url_for('products') }}" class="cta-button">Ver Produtos</a></div>
+        {% else %}
+            <form action="{{ url_for('update_cart') }}" method="POST">
+                <table class="cart-table">
+                    <thead>
+                        <tr>
+                            <th colspan="2">Produto</th>
+                            <th>Fornecedor</th>
+                            <th>Quantidade</th>
+                            <th>Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in cart_items %}
+                            <tr>
+                                <td><img src="{{ url_for('static', filename='uploads/' + item.product.images[0].filename) if item.product.images else 'https://via.placeholder.com/80' }}" alt="{{ item.product.name }}"></td>
+                                <td><a href="{{ url_for('product_detail', product_id=item.product.id) }}">{{ item.product.name }}</a></td>
+                                <td>{{ item.product.supplier.company_name }}</td>
+                                <td><input type="number" name="quantity-{{ item.product.id }}" class="quantity-input" value="{{ item.quantity }}" min="1"></td>
+                                <td>
+                                    <button type="submit" form="remove-form-{{ item.product.id }}" class="remove-btn" title="Remover do carrinho">&times;</button>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div style="text-align: right; margin-top: 20px;">
+                    <button type="submit" class="cta-button">Atualizar Quantidades</button>
+                </div>
+            </form>
+
+            {% for item in cart_items %}
+                <form id="remove-form-{{ item.product.id }}" action="{{ url_for('remove_from_cart', product_id=item.product.id) }}" method="POST" style="display: none;"></form>
+            {% endfor %}
+
+            <div class="cart-summary">
+                <h3>Finalizar Cotação</h3>
+                <p>Crie um grupo para estas cotações para compará-las depois.</p>
+                <form action="{{ url_for('submit_cart_quotes') }}" method="POST">
+                    <div class="form-group">
+                        <label for="group_name">Nome do Grupo de Cotação</label>
+                        <input type="text" id="group_name" name="group_name" placeholder="Ex: Peças para Projeto X" required>
+                    </div>
+                    <button type="submit" class="submit-button" style="width: 100%;">Enviar Cotações</button>
+                </form>
+            </div>
+        {% endif %}
+    </main>
+</body>
+</html>

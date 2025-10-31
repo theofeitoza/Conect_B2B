@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Perfil de {{ company.company_name }} - Connecta B2B</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .profile-grid { display: grid; grid-template-columns: 300px 1fr; gap: 40px; }
+        .profile-sidebar { text-align: center; }
+        .profile-logo { width: 200px; height: 200px; border-radius: 50%; object-fit: cover; border: 4px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px;}
+        .verified-seal { color: #28a745; font-weight: bold; display: inline-block; margin-left: 10px; font-size: 1.2rem; }
+        .profile-section { background-color: #fff; padding: 25px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 30px; }
+        .review-card { border-top: 1px solid #eee; padding: 20px 0; }
+        .review-card:first-child { border-top: none; }
+        .rating-stars { color: #ffc107; font-size: 1.2rem; }
+    </style>
+</head>
+<body>
+    <header class="main-header">
+        <div class="container">
+            <a href="{{ url_for('home') }}" style="text-decoration: none;"><h1 class="logo">Connecta B2B</h1></a>
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="{{ url_for('products') }}">Marketplace</a></li>
+                    <li><a href="{{ url_for('notifications') }}" style="position: relative; padding: 5px;">&#128276; {% if unread_notifications > 0 %}<span style="position: absolute; top: 0; right: -5px; background: red; color: white; border-radius: 50%; padding: 2px 5px; font-size: 0.7rem;">{{ unread_notifications }}</span>{% endif %}</a></li>
+                    <li><a href="{{ url_for('company_profile', company_id=session.company_id) }}">Meu Perfil</a></li>
+                    {% if session.is_admin %}<li><a href="{{ url_for('admin.index') }}" style="color: #ffc107; font-weight: bold;">Painel Admin</a></li>{% endif %}
+                    <li><a href="{{ url_for('dashboard') }}"><strong>Olá, {{ session.company_name }}</strong></a></li>
+                    <li><a href="{{ url_for('logout') }}" class="login-button">Sair</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main class="container" style="padding: 40px 20px;">
+        <div class="profile-grid">
+            <aside class="profile-sidebar">
+                <img src="{{ url_for('static', filename='uploads/' + company.logo_filename) if company.logo_filename else 'https://via.placeholder.com/200' }}" alt="Logo de {{ company.company_name }}" class="profile-logo">
+                <h2>{{ company.company_name }} {% if company.is_verified %}<span class="verified-seal" title="Empresa Verificada">✔</span>{% endif %}</h2>
+                {% if company.user_type == 'supplier' and avg_rating %}
+                    <p class="rating-stars" style="font-size: 1.5rem; margin-bottom:20px;">{{ "%.1f"|format(avg_rating) }} &#9733;</p>
+                {% endif %}
+                {% if company.id == session.company_id %}
+                    <a href="{{ url_for('edit_profile') }}" class="cta-button" style="text-decoration:none;">Editar Perfil</a>
+                {% endif %}
+            </aside>
+            <div class="profile-main">
+                <div class="profile-section">
+                    <h3>Sobre a Empresa</h3>
+                    <p>{{ company.description or 'Nenhuma descrição fornecida.' }}</p>
+                </div>
+                <div class="profile-section">
+                    <h3>Informações</h3>
+                    <p><strong>Website:</strong> <a href="{{ company.website }}" target="_blank" rel="noopener noreferrer">{{ company.website or 'Não informado' }}</a></p>
+                    <p><strong>Endereço:</strong> {{ company.address or 'Não informado' }}</p>
+                    <p><strong>Certificações:</strong> {{ company.certifications or 'Não informado' }}</p>
+                </div>
+                {% if company.user_type == 'supplier' %}
+                <div class="profile-section">
+                    <h3>Avaliações Recebidas</h3>
+                    {% for review in reviews %}
+                        <div class="review-card">
+                            <p><span class="rating-stars">{% for i in range(review.rating) %}&#9733;{% endfor %}{% for i in range(5-review.rating) %}<span style="color:#ccc;">&#9733;</span>{% endfor %}</span></p>
+                            {% if review.comment %}<p><em>"{{ review.comment }}"</em></p>{% endif %}
+                            <small>Avaliado por <strong><a href="{{ url_for('company_profile', company_id=review.reviewer_id) }}">{{ review.quote.buyer.company_name }}</a></strong> em {{ review.timestamp.strftime('%d/%m/%Y') }}</small>
+                        </div>
+                    {% else %}
+                        <p>Esta empresa ainda não recebeu avaliações.</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+</body>
+</html>

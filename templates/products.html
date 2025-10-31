@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Marketplace - Connecta B2B</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .page-header { text-align: center; padding: 40px 20px; background-color: #ffffff; border-bottom: 1px solid #e0e0e0; }
+        .search-filter-bar { background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 30px 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; align-items: end; border: 1px solid #ddd; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { margin-bottom: 5px; font-weight: bold; font-size: 0.9rem; }
+        .search-group { grid-column: 1 / -1; position: relative; }
+        .search-filter-bar input, .search-filter-bar select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 1rem; box-sizing: border-box; }
+        #search-results { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; border-top: none; z-index: 100; max-height: 200px; overflow-y: auto; display: none; list-style-type: none; margin: 0; padding: 0; }
+        #search-results li { padding: 10px; cursor: pointer; }
+        #search-results li:hover { background-color: #f0f0f0; }
+        .search-filter-bar button { background-color: #007bff; color: white; padding: 10px 30px; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem; transition: background-color 0.3s ease; width: 100%; }
+        .search-filter-bar button:hover { background-color: #0056b3; }
+        .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 30px; padding-bottom: 40px; }
+        .product-card { background-color: #fff; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
+        .product-card a { text-decoration: none; color: inherit; }
+        .product-image-container { width: 100%; height: 200px; background-color: #f0f0f0; display: block; }
+        .product-image-container img { width: 100%; height: 100%; object-fit: cover; }
+        .product-info { padding: 20px; flex-grow: 1; display: flex; flex-direction: column; }
+        .product-info h4 { font-size: 1.3rem; color: #0056b3; margin-bottom: 10px; }
+        .pagination { text-align: center; margin: 40px 0; }
+        .pagination a { color: #007bff; text-decoration: none; padding: 8px 16px; border: 1px solid #ddd; margin: 0 4px; }
+        .pagination a.active { background-color: #007bff; color: white; border-color: #007bff; }
+    </style>
+</head>
+<body>
+    <header class="main-header">
+        <div class="container">
+            <a href="{{ url_for('home') }}" style="text-decoration: none;"><h1 class="logo">Connecta B2B</h1></a>
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="{{ url_for('products') }}">Marketplace</a></li>
+                    {% if session.user_type == 'buyer' %}
+                    <li><a href="{{ url_for('view_cart') }}" style="position: relative; padding: 5px;">&#128722; {% if cart_item_count > 0 %}<span style="position: absolute; top: 0; right: -5px; background: #007bff; color: white; border-radius: 50%; padding: 2px 5px; font-size: 0.7rem;">{{ cart_item_count }}</span>{% endif %}</a></li>
+                    {% endif %}
+                    <li><a href="{{ url_for('notifications') }}" style="position: relative; padding: 5px;">&#128276; {% if unread_notifications > 0 %}<span style="position: absolute; top: 0; right: -5px; background: red; color: white; border-radius: 50%; padding: 2px 5px; font-size: 0.7rem;">{{ unread_notifications }}</span>{% endif %}</a></li>
+                    <li><a href="{{ url_for('company_profile', company_id=session.company_id) }}">Meu Perfil</a></li>
+                    {% if session.is_admin %}<li><a href="{{ url_for('admin.index') }}" style="color: #ffc107; font-weight: bold;">Painel Admin</a></li>{% endif %}
+                    <li><a href="{{ url_for('dashboard') }}"><strong>Olá, {{ session.company_name }}</strong></a></li>
+                    <li><a href="{{ url_for('logout') }}" class="login-button">Sair</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main class="container">
+        <div class="page-header"><h2>Marketplace de Produtos Industriais</h2><p>Encontre os produtos e fornecedores ideais. Use a busca e os filtros para refinar seus resultados.</p></div>
+        <form method="GET" action="{{ url_for('products') }}" class="search-filter-bar">
+            <div class="search-group"><label for="search-input">Buscar Produto</label><input type="text" name="search" id="search-input" placeholder="Nome do produto..." value="{{ filters.search or '' }}" autocomplete="off"><ul id="search-results"></ul></div>
+            <div class="form-group"><label for="category">Categoria</label><select name="category" id="category"><option value="">Todas</option>{% for c in categories %}<option value="{{ c }}" {% if c == filters.category %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="price_min">Preço Mín.</label><input type="number" name="price_min" id="price_min" placeholder="R$" value="{{ filters.price_min if filters.price_min is not none }}"></div>
+            <div class="form-group"><label for="price_max">Preço Máx.</label><input type="number" name="price_max" id="price_max" placeholder="R$" value="{{ filters.price_max if filters.price_max is not none }}"></div>
+            <div class="form-group"><label for="location">Localização</label><input type="text" name="location" id="location" placeholder="Cidade ou Estado" value="{{ filters.location or '' }}"></div>
+            <div class="form-group"><label for="rating_min">Avaliação Mín.</label><select name="rating_min" id="rating_min"><option value="">Todas</option><option value="4" {% if filters.rating_min == 4 %}selected{% endif %}>4+ Estrelas</option><option value="3" {% if filters.rating_min == 3 %}selected{% endif %}>3+ Estrelas</option><option value="2" {% if filters.rating_min == 2 %}selected{% endif %}>2+ Estrelas</option><option value="1" {% if filters.rating_min == 1 %}selected{% endif %}>1+ Estrela</option></select></div>
+            <div class="form-group"><button type="submit">Filtrar</button></div>
+        </form>
+        <div class="products-grid">
+            {% for product in pagination.items %}
+                <div class="product-card">
+                    <a href="{{ url_for('product_detail', product_id=product.id) }}">
+                        <div class="product-image-container">{% if product.images %}<img src="{{ url_for('static', filename='uploads/' + product.images[0].filename) }}" alt="{{ product.name }}">{% else %}<div style="display:flex; align-items:center; justify-content:center; height:100%; color:#aaa;">Sem Imagem</div>{% endif %}</div>
+                        <div class="product-info">
+                            <h4>{{ product.name }}</h4>
+                            <p>Fornecido por: <strong>{{ product.supplier.company_name }}</strong></p>
+                            <p style="margin-top:auto;">R$ {{ "%.2f"|format(product.base_price) if product.base_price else 'Sob consulta' }}</p>
+                        </div>
+                    </a>
+                    {% if session.user_type == 'buyer' %}
+                    <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="POST" style="padding: 0 20px 20px 20px;">
+                        <button type="submit" class="submit-button" style="width:100%;">Adicionar ao Carrinho</button>
+                    </form>
+                    {% endif %}
+                </div>
+            {% else %}<p>Nenhum produto encontrado com os filtros aplicados.</p>{% endfor %}
+        </div>
+        <div class="pagination">
+            {% if pagination.has_prev %}<a href="{{ url_for('products', page=pagination.prev_num, **filters) }}">« Anterior</a>{% endif %}
+            {% for page_num in pagination.iter_pages() %}{% if page_num %}{% if pagination.page == page_num %}<a href="#" class="active">{{ page_num }}</a>{% else %}<a href="{{ url_for('products', page=page_num, **filters) }}">{{ page_num }}</a>{% endif %}{% else %}...{% endif %}{% endfor %}
+            {% if pagination.has_next %}<a href="{{ url_for('products', page=pagination.next_num, **filters) }}">Próxima »</a>{% endif %}
+        </div>
+    </main>
+    <script src="{{ url_for('static', filename='js/search.js') }}"></script>
+</body>
+</html>

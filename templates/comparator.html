@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Comparador de Propostas: {{ group.name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .comparator-container { padding: 40px 20px; }
+        .comparator-table { width: 100%; border-collapse: collapse; margin-top: 20px; background-color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .comparator-table th, .comparator-table td { padding: 15px; border: 1px solid #ddd; text-align: center; }
+        .comparator-table th { background-color: #f8f9fa; }
+        .product-col { text-align: left; font-weight: bold; width: 25%; }
+        .price-val { font-weight: bold; color: #28a745; }
+        .status-badge { padding: 3px 8px; font-size: 0.8rem; border-radius: 12px; color: #fff; font-weight: bold; }
+        .status-Pendente { background-color: #ffc107; color: #333; } .status-Respondido { background-color: #007bff; }
+        .status-Aceito { background-color: #28a745; } .status-Recusado { background-color: #dc3545; }
+        .rating-stars { color: #ffc107; }
+    </style>
+</head>
+<body>
+    <header class="main-header">
+        <div class="container">
+            <a href="{{ url_for('home') }}" style="text-decoration: none;"><h1 class="logo">Connecta B2B</h1></a>
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="{{ url_for('products') }}">Marketplace</a></li>
+                    <li><a href="{{ url_for('view_cart') }}" style="position: relative; padding: 5px;">&#128722; {% if cart_item_count > 0 %}<span style="position: absolute; top: 0; right: -5px; background: #007bff; color: white; border-radius: 50%; padding: 2px 5px; font-size: 0.7rem;">{{ cart_item_count }}</span>{% endif %}</a></li>
+                    <li><a href="{{ url_for('notifications') }}" style="position: relative; padding: 5px;">&#128276; {% if unread_notifications > 0 %}<span style="position: absolute; top: 0; right: -5px; background: red; color: white; border-radius: 50%; padding: 2px 5px; font-size: 0.7rem;">{{ unread_notifications }}</span>{% endif %}</a></li>
+                    <li><a href="{{ url_for('company_profile', company_id=session.company_id) }}">Meu Perfil</a></li>
+                    {% if session.is_admin %}<li><a href="{{ url_for('admin.index') }}" style="color: #ffc107; font-weight: bold;">Painel Admin</a></li>{% endif %}
+                    <li><a href="{{ url_for('dashboard') }}"><strong>Olá, {{ session.company_name }}</strong></a></li>
+                    <li><a href="{{ url_for('logout') }}" class="login-button">Sair</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main class="container comparator-container">
+        <h2 style="text-align: center;">Comparador de Propostas</h2>
+        <h3 style="text-align: center; color: #555;">Grupo: {{ group.name }}</h3>
+
+        <table class="comparator-table">
+            <thead>
+                <tr>
+                    <th class="product-col">Produto</th>
+                    <th>Fornecedor</th>
+                    <th>Avaliação do Fornecedor</th>
+                    <th>Preço Ofertado</th>
+                    <th>Prazo de Entrega</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for quote in quotes %}
+                <tr>
+                    <td class="product-col">{{ quote.product.name }} (Qtd: {{ quote.quantity }})</td>
+                    <td>{{ quote.supplier.company_name }} {% if quote.supplier.is_verified %}✔{% endif %}</td>
+                    <td><span class="rating-stars">{{ "%.1f"|format(supplier_ratings[quote.supplier_id]) }} &#9733;</span></td>
+                    <td class="price-val">{% if quote.offered_price %}R$ {{ "%.2f"|format(quote.offered_price) }}{% else %}Aguardando{% endif %}</td>
+                    <td>{{ quote.delivery_date.strftime('%d/%m/%Y') if quote.delivery_date else 'N/A' }}</td>
+                    <td><span class="status-badge status-{{ quote.status }}">{{ quote.status }}</span></td>
+                    <td><a href="{{ url_for('quote_detail', quote_id=quote.id) }}" class="cta-button" style="padding: 5px 10px; font-size: 0.9rem;">Ver Detalhes</a></td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7">Nenhuma cotação encontrada para este grupo.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </main>
+</body>
+</html>

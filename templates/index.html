@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Connecta B2B - A plataforma que conecta fornecedores e indústrias.">
+    <title>Connecta B2B - O Marketplace da Indústria</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <header class="main-header">
+        <div class="container">
+            <a href="{{ url_for('home') }}" style="text-decoration: none;"><h1 class="logo">Connecta B2B</h1></a>
+            <nav class="main-nav">
+                {% if session.company_id %}
+                    <ul>
+                        <li><a href="{{ url_for('products') }}">Marketplace</a></li>
+                        <li><a href="{{ url_for('notifications') }}" style="position: relative; padding: 5px;">&#128276; {% if unread_notifications > 0 %}<span style="position: absolute; top: 0; right: -5px; background: red; color: white; border-radius: 50%; padding: 2px 5px; font-size: 0.7rem;">{{ unread_notifications }}</span>{% endif %}</a></li>
+                        <li><a href="{{ url_for('company_profile', company_id=session.company_id) }}">Meu Perfil</a></li>
+                        {% if session.is_admin %}
+                            <li><a href="{{ url_for('admin.index') }}" style="color: #ffc107; font-weight: bold;">Painel Admin</a></li>
+                        {% endif %}
+                        <li><a href="{{ url_for('dashboard') }}"><strong>Olá, {{ session.company_name }}</strong></a></li>
+                        <li><a href="{{ url_for('logout') }}" class="login-button">Sair</a></li>
+                    </ul>
+                {% else %}
+                    <ul>
+                        <li><a href="#features">Funcionalidades</a></li>
+                        <li><a href="{{ url_for('login') }}">Login</a></li>
+                        <li><a href="{{ url_for('register') }}" class="login-button">Cadastre-se</a></li>
+                    </ul>
+                {% endif %}
+            </nav>
+        </div>
+    </header>
+    <main>
+        <section class="hero-section">
+            <div class="container">
+                <h2>Otimize sua Cadeia de Suprimentos.</h2>
+                <p>Encontre os melhores fornecedores e agilize suas cotações em uma única plataforma.</p>
+                <a href="{{ url_for('register') }}" class="cta-button">Cadastre sua Empresa Agora</a>
+            </div>
+        </section>
+        <section id="features" class="features-section">
+            <div class="container">
+                <h3 class="section-title">Nossa Plataforma</h3>
+                <div class="features-grid">
+                    <div class="feature-card"><h4>Busca Avançada</h4><p>Filtre produtos por especificações técnicas e encontre exatamente o que sua indústria precisa.</p></div>
+                    <div class="feature-card"><h4>Cotações Simplificadas</h4><p>Envie pedidos de cotação para múltiplos fornecedores com apenas alguns cliques e compare propostas.</p></div>
+                    <div class="feature-card"><h4>Marketplace Seguro</h4><p>Ambiente exclusivo para empresas (B2B) com verificação de perfis para garantir transações seguras.</p></div>
+                </div>
+            </div>
+        </section>
+    </main>
+    <footer class="main-footer">
+        <div class="container"><p>&copy; 2025 Connecta B2B. Todos os direitos reservados.</p></div>
+    </footer>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

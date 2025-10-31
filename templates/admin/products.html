@@ -1,0 +1,44 @@
+{% extends 'admin/layout.html' %}
+
+{% block title %}Moderar Produtos{% endblock %}
+
+{% block content %}
+    <h1>Moderar Produtos</h1>
+    <p>Todos os produtos cadastrados na plataforma.</p>
+
+    <table style="width: 100%; border-collapse: collapse; margin-top: 20px; background-color: #fff;">
+        <thead>
+            <tr style="background-color: #f2f2f2;">
+                <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">ID</th>
+                <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">Nome do Produto</th>
+                <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">Fornecedor</th>
+                <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">Categoria</th>
+                <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">Preço Base</th>
+                <th style="padding: 12px; border: 1px solid #ddd;">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for product in products %}
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #ddd;">{{ product.id }}</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">
+                        <a href="{{ url_for('product_detail', product_id=product.id) }}" target="_blank">{{ product.name }}</a>
+                    </td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">{{ product.supplier.company_name }}</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">{{ product.category }}</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">R$ {{ "%.2f"|format(product.base_price) if product.base_price else 'N/A' }}</td>
+                    <td style="padding: 10px; border: 1px solid #ddd; text-align: center;">
+                        <a href="{{ url_for('edit_product', product_id=product.id) }}" style="margin-right: 15px; text-decoration: none;">Editar</a>
+                        <form action="{{ url_for('delete_product', product_id=product.id) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este produto?');" style="display:inline;">
+                            <button type="submit" style="color: red; background: none; border: none; cursor: pointer; padding: 0; font-size: 1rem;">Excluir</button>
+                        </form>
+                    </td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="6" style="padding: 10px; border: 1px solid #ddd; text-align: center;">Nenhum produto cadastrado.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

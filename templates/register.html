@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro - Connecta B2B</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/form.css') }}">
+</head>
+<body>
+    <header class="main-header">
+        <div class="container">
+            <a href="{{ url_for('home') }}" style="text-decoration: none;"><h1 class="logo">Connecta B2B</h1></a>
+            <nav class="main-nav"><ul><li><a href="{{ url_for('home') }}#features">Funcionalidades</a></li></ul></nav>
+        </div>
+    </header>
+    <main>
+        <section class="form-section">
+            <div class="form-container">
+                <h2 class="section-title" style="margin-bottom: 30px;">Crie sua Conta Empresarial</h2>
+                {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}<ul class="flash-messages">{% for c, m in messages %}<li class="{{ c }}">{{ m }}</li>{% endfor %}</ul>{% endif %}{% endwith %}
+                <form action="{{ url_for('register') }}" method="POST">
+                    <div class="form-group"><label for="company_name">Nome da Empresa</label><input type="text" id="company_name" name="company_name" required></div>
+                    <div class="form-group"><label for="cnpj">CNPJ</label><input type="text" id="cnpj" name="cnpj" required></div>
+                    <div class="form-group"><label for="email">E-mail Comercial</label><input type="email" id="email" name="email" required></div>
+                    <div class="form-group"><label for="password">Senha</label><input type="password" id="password" name="password" required minlength="8"></div>
+                    <div class="form-group">
+                        <label>Tipo de Conta</label>
+                        <div class="user-type-options">
+                            <label for="supplier"><input type="radio" id="supplier" name="user_type" value="supplier" required> Sou Fornecedor</label>
+                            <label for="buyer"><input type="radio" id="buyer" name="user_type" value="buyer" required> Sou Comprador</label>
+                        </div>
+                    </div>
+                    <button type="submit" class="submit-button">Cadastrar</button>
+                </form>
+            </div>
+        </section>
+    </main>
+    <footer class="main-footer"><div class="container"><p>&copy; 2025 Connecta B2B. Todos os direitos reservados.</p></div></footer>
+</body>
+</html>

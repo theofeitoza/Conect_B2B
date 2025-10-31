@@ -1,0 +1,21 @@
+# Arquivos de ambiente com dados sensíveis
+.env
+
+# Banco de dados SQLite local
+connecta.db
+
+# Arquivos de cache e compilados do Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Pasta de instância do Flask
+instance/
+
+# Pasta de ambiente virtual
+venv/
+.venv/
+
+# Arquivos de migração do banco de dados (opcional, mas recomendado)
+migrations/

@@ -17,9 +17,11 @@
         .message-bubble.sent .message-info { color: #d1e7ff; }
         .typing-indicator { color: #888; font-style: italic; padding: 5px 20px; font-size: 0.9rem; height: 20px; }
         .chat-input-form { padding: 15px; border-top: 1px solid #ddd; display: flex; gap: 10px; }
-        .chat-input-form input { flex-grow: 1; border: 1px solid #ccc; padding: 10px 15px; border-radius: 20px; font-size: 1rem; }
+        .chat-input-form input[type="text"] { flex-grow: 1; border: 1px solid #ccc; padding: 10px 15px; border-radius: 20px; font-size: 1rem; }
         .chat-input-form button { background: #007bff; border: none; color: white; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; transition: background-color 0.2s; }
         .chat-input-form button:hover { background-color: #0056b3; }
+        .chat-input-form #attach-button { background-color: #6c757d; }
+        .chat-input-form #attach-button:hover { background-color: #5a6268; }
     </style>
 </head>
 <body>
@@ -43,13 +45,28 @@
         <div class="chat-messages" id="messages">
             {% for msg in messages %}
                 <div class="message-bubble {{ 'sent' if msg.sender_id == session.company_id else 'received' }}">
-                    <div>{{ msg.message }}</div>
+                    {% if msg.message %}
+                        <div>{{ msg.message }}</div>
+                    {% endif %}
+                    {% if msg.attachment_filename %}
+                        <div class="attachment">
+                            {% if msg.attachment_type == 'image' %}
+                                <a href="{{ url_for('download_chat_attachment', filename=msg.attachment_filename) }}" target="_blank">
+                                    <img src="{{ url_for('download_chat_attachment', filename=msg.attachment_filename) }}" alt="Anexo" style="max-width: 100%; border-radius: 10px;">
+                                </a>
+                            {% else %}
+                                <a href="{{ url_for('download_chat_attachment', filename=msg.attachment_filename) }}" target="_blank">Baixar: {{ msg.attachment_filename }}</a>
+                            {% endif %}
+                        </div>
+                    {% endif %}
                     <div class="message-info">{{ msg.sender.company_name }} - {{ msg.timestamp.strftime('%H:%M') }}</div>
                 </div>
             {% endfor %}
         </div>
         <div class="typing-indicator" id="typing-indicator"></div>
         <form class="chat-input-form" id="message-form">
+            <input type="file" id="file-input" style="display: none;" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx">
+            <button type="button" id="attach-button" aria-label="Anexar Arquivo">&#128206;</button>
             <input type="text" id="message-input" placeholder="Digite sua mensagem..." autocomplete="off">
             <button type="submit" aria-label="Enviar Mensagem">&#10148;</button>
         </form>

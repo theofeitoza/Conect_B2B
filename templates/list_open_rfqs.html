@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Cotações Abertas - Connecta B2B</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .page-container { padding: 40px 20px; }
+        .rfq-list { list-style: none; padding: 0; }
+        .rfq-item { background-color: #fff; border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-bottom: 15px; }
+        .rfq-item a { text-decoration: none; color: #0056b3; font-size: 1.3rem; font-weight: bold; }
+        .rfq-meta { color: #666; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <header class="main-header">
+        <div class="container">
+            <a href="{{ url_for('dashboard') }}" style="text-decoration: none;"><h1 class="logo">Connecta B2B</h1></a>
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="{{ url_for('dashboard') }}">Meu Painel</a></li>
+                    <li><a href="{{ url_for('logout') }}" class="login-button">Sair</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main class="container page-container">
+        <h2>Cotações Abertas no Marketplace</h2>
+        <p>Veja as solicitações de compradores e envie sua proposta.</p>
+        <ul class="rfq-list">
+            {% for rfq in rfqs %}
+                <li class="rfq-item">
+                    <a href="{{ url_for('open_rfq_detail', rfq_id=rfq.id) }}">{{ rfq.title }}</a>
+                    <p>{{ rfq.description|truncate(150) }}</p>
+                    <div class="rfq-meta">
+                        <strong>Categoria:</strong> {{ rfq.category }} | 
+                        <strong>Quantidade:</strong> {{ rfq.quantity }} | 
+                        <strong>Comprador:</strong> {{ rfq.buyer.company_name }}
+                    </div>
+                </li>
+            {% else %}
+                <p>Nenhuma cotação aberta no momento.</p>
+            {% endfor %}
+        </ul>
+    </main>
+</body>
+</html>

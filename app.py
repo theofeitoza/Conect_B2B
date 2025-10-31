@@ -20,8 +20,9 @@ from threading import Thread
 basedir = os.path.abspath(os.path.dirname(__file__))
 UPLOAD_FOLDER = os.path.join(basedir, 'static', 'uploads')
 ATTACHMENT_FOLDER = os.path.join(basedir, 'static', 'attachments')
+CHAT_ATTACHMENT_FOLDER = os.path.join(basedir, 'static', 'chat_attachments') # Nova pasta para anexos do chat
 ALLOWED_IMG_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-ALLOWED_ATTACH_EXTENSIONS = {'pdf', 'doc', 'docx', 'xls', 'xlsx'}
+ALLOWED_ATTACH_EXTENSIONS = {'pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png'} # Adicionadas extensões de imagem
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'uma-chave-secreta-muito-segura-e-dificil-de-adivinhar'
@@ -29,6 +30,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'co
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['ATTACHMENT_FOLDER'] = ATTACHMENT_FOLDER
+app.config['CHAT_ATTACHMENT_FOLDER'] = CHAT_ATTACHMENT_FOLDER # Nova configuração
 
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
@@ -93,6 +95,8 @@ class Company(db.Model):
     sent_quotes = db.relationship('QuoteRequest', foreign_keys='QuoteRequest.buyer_id', backref='buyer', lazy='dynamic')
     received_quotes = db.relationship('QuoteRequest', foreign_keys='QuoteRequest.supplier_id', backref='supplier', lazy='dynamic')
     quote_groups = db.relationship('QuoteGroup', backref='buyer', lazy=True)
+    open_rfqs = db.relationship('OpenRFQ', backref='buyer', lazy=True) # RFQ: Ligação com a empresa que criou
+    open_rfq_responses = db.relationship('OpenRFQResponse', backref='supplier', lazy=True) # RFQ: Ligação com as respostas
     def set_password(self,p): self.password_hash=generate_password_hash(p)
     def check_password(self,p): return check_password_hash(self.password_hash,p)
 
@@ -127,8 +131,33 @@ class Review(db.Model):
     id = db.Column(db.Integer, primary_key=True); rating = db.Column(db.Integer, nullable=False); comment = db.Column(db.Text, nullable=True); timestamp = db.Column(db.DateTime, default=datetime.utcnow); quote_id = db.Column(db.Integer, db.ForeignKey('quote_request.id'), unique=True, nullable=False); reviewer_id = db.Column(db.Integer, db.ForeignKey('company.id'), nullable=False); supplier_id = db.Column(db.Integer, db.ForeignKey('company.id'), nullable=False)
 
 class ChatMessage(db.Model):
-    id = db.Column(db.Integer, primary_key=True); message = db.Column(db.Text, nullable=False); timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False); quote_id = db.Column(db.Integer, db.ForeignKey('quote_request.id'), nullable=False); sender_id = db.Column(db.Integer, db.ForeignKey('company.id'), nullable=False)
+    id = db.Column(db.Integer, primary_key=True); message = db.Column(db.Text, nullable=True); timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False); quote_id = db.Column(db.Integer, db.ForeignKey('quote_request.id'), nullable=False); sender_id = db.Column(db.Integer, db.ForeignKey('company.id'), nullable=False)
+    attachment_filename = db.Column(db.String(255), nullable=True) # Campo para anexo
+    attachment_type = db.Column(db.String(50), nullable=True) # Tipo do anexo (imagem, pdf, etc.)
     sender = db.relationship('Company')
+
+# --- NOVOS MODELOS PARA RFQ ABERTO ---
+class OpenRFQ(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(150), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    category = db.Column(db.String(80), nullable=False)
+    quantity = db.Column(db.String(50), nullable=False) # Usando String para flexibilidade (ex: "100 unidades", "500 metros")
+    deadline = db.Column(db.Date, nullable=True)
+    status = db.Column(db.String(50), default='Aberto') # Aberto, Fechado
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    buyer_id = db.Column(db.Integer, db.ForeignKey('company.id'), nullable=False)
+    responses = db.relationship('OpenRFQResponse', backref='rfq', lazy='dynamic', cascade="all, delete-orphan")
+
+class OpenRFQResponse(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    price = db.Column(db.Float, nullable=False)
+    delivery_date = db.Column(db.Date, nullable=True)
+    message = db.Column(db.Text, nullable=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    rfq_id = db.Column(db.Integer, db.ForeignKey('open_rfq.id'), nullable=False)
+    supplier_id = db.Column(db.Integer, db.ForeignKey('company.id'), nullable=False)
+# --- FIM DOS NOVOS MODELOS ---
 
 class Announcement(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -215,6 +244,87 @@ def chat(quote_id):
     if session['company_id'] not in [quote.buyer_id, quote.supplier_id]: flash('Acesso não permitido.', 'error'); return redirect(url_for('dashboard'))
     messages = ChatMessage.query.filter_by(quote_id=quote.id).order_by(ChatMessage.timestamp.asc()).all()
     return render_template('chat.html', quote=quote, messages=messages)
+
+# --- NOVAS ROTAS PARA RFQ ABERTO ---
+@app.route('/rfq/open/new', methods=['GET', 'POST'])
+@login_required
+def new_open_rfq():
+    if session.get('user_type') != 'buyer':
+        flash('Apenas compradores podem criar RFQs.', 'error')
+        return redirect(url_for('dashboard'))
+    if request.method == 'POST':
+        title = request.form.get('title')
+        description = request.form.get('description')
+        category = request.form.get('category')
+        quantity = request.form.get('quantity')
+        deadline_str = request.form.get('deadline')
+        deadline = datetime.strptime(deadline_str, '%Y-%m-%d').date() if deadline_str else None
+        
+        if not all([title, description, category, quantity]):
+            flash('Todos os campos são obrigatórios.', 'error')
+            return redirect(url_for('new_open_rfq'))
+
+        new_rfq = OpenRFQ(
+            title=title, description=description, category=category,
+            quantity=quantity, deadline=deadline, buyer_id=session['company_id']
+        )
+        db.session.add(new_rfq)
+        db.session.commit()
+        flash('Sua solicitação de cotação aberta foi publicada!', 'success')
+        return redirect(url_for('dashboard'))
+    return render_template('new_open_rfq.html')
+
+@app.route('/rfq/open')
+@login_required
+def list_open_rfqs():
+    if session.get('user_type') != 'supplier':
+        flash('Apenas fornecedores podem ver esta página.', 'error')
+        return redirect(url_for('dashboard'))
+    
+    rfqs = OpenRFQ.query.filter_by(status='Aberto').order_by(OpenRFQ.timestamp.desc()).all()
+    return render_template('list_open_rfqs.html', rfqs=rfqs)
+
+@app.route('/rfq/open/<int:rfq_id>', methods=['GET', 'POST'])
+@login_required
+def open_rfq_detail(rfq_id):
+    rfq = db.session.get(OpenRFQ, rfq_id)
+    if not rfq:
+        flash('RFQ não encontrado.', 'error')
+        return redirect(url_for('dashboard'))
+
+    if request.method == 'POST' and session.get('user_type') == 'supplier':
+        price_str = request.form.get('price')
+        delivery_date_str = request.form.get('delivery_date')
+        message = request.form.get('message')
+
+        if not price_str:
+            flash('O preço é obrigatório.', 'error')
+            return redirect(url_for('open_rfq_detail', rfq_id=rfq.id))
+
+        price = float(price_str)
+        delivery_date = datetime.strptime(delivery_date_str, '%Y-%m-%d').date() if delivery_date_str else None
+
+        new_response = OpenRFQResponse(
+            price=price, delivery_date=delivery_date, message=message,
+            rfq_id=rfq.id, supplier_id=session['company_id']
+        )
+        db.session.add(new_response)
+        db.session.commit()
+
+        # Notificar o comprador
+        notification = Notification(
+            message=f"Sua RFQ '{rfq.title}' recebeu uma nova proposta.",
+            link=url_for('open_rfq_detail', rfq_id=rfq.id),
+            recipient_id=rfq.buyer_id
+        )
+        db.session.add(notification)
+        db.session.commit()
+        
+        flash('Sua proposta foi enviada!', 'success')
+        return redirect(url_for('open_rfq_detail', rfq_id=rfq.id))
+        
+    return render_template('open_rfq_detail.html', rfq=rfq)
+# --- FIM DAS NOVAS ROTAS ---
 
 @app.route('/products')
 @login_required
@@ -338,6 +448,11 @@ def comparator(group_id):
 @app.route('/uploads/attachments/<filename>')
 @login_required
 def download_attachment(filename): return send_from_directory(app.config['ATTACHMENT_FOLDER'], filename, as_attachment=True)
+
+@app.route('/uploads/chat/<filename>') # Rota para baixar anexos do chat
+@login_required
+def download_chat_attachment(filename):
+    return send_from_directory(app.config['CHAT_ATTACHMENT_FOLDER'], filename, as_attachment=True)
 
 @app.route('/company/<int:company_id>')
 @login_required
@@ -611,11 +726,55 @@ def on_stop_typing(data):
 
 @socketio.on('send_message')
 def on_send_message(data):
-    quote_id = data['quote_id']; message_text = data['message']; room = f"quote_{quote_id}"
-    new_message = ChatMessage(message=message_text, quote_id=quote_id, sender_id=session['company_id'])
-    db.session.add(new_message); db.session.commit()
-    message_payload = { 'message': new_message.message, 'sender_name': new_message.sender.company_name, 'timestamp': new_message.timestamp.strftime('%d/%m/%Y %H:%M') }
+    quote_id = data['quote_id']
+    message_text = data.get('message')
+    room = f"quote_{quote_id}"
+    
+    attachment_filename = data.get('attachment')
+    attachment_type = None
+    if attachment_filename:
+        if '.' in attachment_filename:
+            ext = attachment_filename.rsplit('.', 1)[1].lower()
+            if ext in {'png', 'jpg', 'jpeg', 'gif'}:
+                attachment_type = 'image'
+            else:
+                attachment_type = 'file'
+
+    if not message_text and not attachment_filename:
+        return # Não envia mensagem vazia
+
+    new_message = ChatMessage(
+        message=message_text,
+        quote_id=quote_id,
+        sender_id=session['company_id'],
+        attachment_filename=attachment_filename,
+        attachment_type=attachment_type
+    )
+    db.session.add(new_message)
+    db.session.commit()
+
+    message_payload = {
+        'message': new_message.message,
+        'sender_name': new_message.sender.company_name,
+        'timestamp': new_message.timestamp.strftime('%d/%m/%Y %H:%M'),
+        'attachment_filename': new_message.attachment_filename,
+        'attachment_type': new_message.attachment_type
+    }
     send(message_payload, to=room)
+
+@app.route('/chat/upload', methods=['POST'])
+@login_required
+def upload_chat_file():
+    if 'file' not in request.files:
+        return jsonify({'error': 'Nenhum arquivo enviado'}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'Nome de arquivo vazio'}), 400
+    if file and allowed_file(file.filename, ALLOWED_ATTACH_EXTENSIONS):
+        filename = secure_filename(f"{datetime.utcnow().timestamp()}_{file.filename}")
+        file.save(os.path.join(app.config['CHAT_ATTACHMENT_FOLDER'], filename))
+        return jsonify({'filename': filename})
+    return jsonify({'error': 'Tipo de arquivo não permitido'}), 400
 
 # --- Execução da Aplicação ---
 if __name__ == '__main__':

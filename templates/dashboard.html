@@ -72,6 +72,7 @@
         {% if session.user_type == 'supplier' %}
             <p>Você está logado como <strong>Fornecedor</strong>.</p>
             <a href="{{ url_for('add_product') }}" class="cta-button" style="display: inline-block; text-decoration: none; margin-bottom: 20px;">Adicionar Novo Produto</a>
+            <a href="{{ url_for('list_open_rfqs') }}" class="cta-button" style="display: inline-block; text-decoration: none; margin-bottom: 20px; background-color: #17a2b8;">Ver Cotações Abertas</a>
             <div class="section-container">
                 <div class="tabs"><a href="{{ url_for('dashboard', view='active') }}" class="{{ 'active' if view == 'active' }}">Cotações Ativas</a><a href="{{ url_for('dashboard', view='archived') }}" class="{{ 'active' if view == 'archived' }}">Histórico</a></div>
                 {% if view == 'active' %}
@@ -91,6 +92,7 @@
         {% elif session.user_type == 'buyer' %}
             <p>Você está logado como <strong>Comprador</strong>.</p>
             <a href="{{ url_for('products') }}" class="cta-button" style="display: inline-block; text-decoration: none; margin-bottom: 20px;">Acessar Marketplace</a>
+            <a href="{{ url_for('new_open_rfq') }}" class="cta-button" style="display: inline-block; text-decoration: none; margin-bottom: 20px; background-color: #17a2b8;">Criar Cotação Aberta (RFQ)</a>
             <div class="section-container">
                 <h3>Meus Grupos de Cotação</h3>
                 {% for group in quote_groups %}

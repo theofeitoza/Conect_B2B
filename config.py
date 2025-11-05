@@ -23,6 +23,7 @@ class Config:
     # Configuração de Uploads
     UPLOAD_FOLDER = os.path.join(basedir, 'static', 'uploads')
     ATTACHMENT_FOLDER = os.path.join(basedir, 'static', 'attachments')
+    CHAT_ATTACHMENT_FOLDER = os.path.join(basedir, 'static', 'chat_attachments') # ADICIONADO
 
     # Configuração de E-mail (LÊ DO ARQUIVO .env)
     MAIL_SERVER = os.environ.get('MAIL_SERVER')
@@ -31,3 +32,8 @@ class Config:
     MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
     MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
     MAIL_DEFAULT_SENDER = ('Connecta B2B', MAIL_USERNAME)
+    
+    # ADICIONADO: Configuração do Celery
+    # (Presume que o Redis (broker) está rodando localmente na porta padrão)
+    CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL') or 'redis://localhost:6379/0'
+    CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND') or 'redis://localhost:6379/0'

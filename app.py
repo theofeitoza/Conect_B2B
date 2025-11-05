@@ -5,7 +5,8 @@ import csv
 from io import StringIO
 from flask import Flask, render_template, request, redirect, url_for, flash, session, send_from_directory, jsonify, Blueprint, Response
 from flask_sqlalchemy import SQLAlchemy
-from flask_socketio import SocketIO, join_room, leave_room, send, emit
+# CORREÇÃO: Removido 'Room' da importação
+from flask_socketio import SocketIO, join_room, leave_room, send, emit 
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from functools import wraps
@@ -14,46 +15,67 @@ from sqlalchemy import or_, func, and_
 from sqlalchemy.orm import joinedload
 from flask_migrate import Migrate
 from flask_mail import Mail, Message
-from threading import Thread
+from celery import Celery
+from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadTimeSignature
 
 # --- Configuração da Aplicação ---
 basedir = os.path.abspath(os.path.dirname(__file__))
-UPLOAD_FOLDER = os.path.join(basedir, 'static', 'uploads')
-ATTACHMENT_FOLDER = os.path.join(basedir, 'static', 'attachments')
-CHAT_ATTACHMENT_FOLDER = os.path.join(basedir, 'static', 'chat_attachments') # Nova pasta para anexos do chat
-ALLOWED_IMG_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-ALLOWED_ATTACH_EXTENSIONS = {'pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png'} # Adicionadas extensões de imagem
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'uma-chave-secreta-muito-segura-e-dificil-de-adivinhar'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'connecta.db')
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['ATTACHMENT_FOLDER'] = ATTACHMENT_FOLDER
-app.config['CHAT_ATTACHMENT_FOLDER'] = CHAT_ATTACHMENT_FOLDER # Nova configuração
+# Carrega a configuração do arquivo config.py
+app.config.from_object('config.Config')
 
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'SEU_EMAIL@gmail.com'
-app.config['MAIL_PASSWORD'] = 'SUA_SENHA_DE_APP'
-app.config['MAIL_DEFAULT_SENDER'] = ('Connecta B2B', app.config['MAIL_USERNAME'])
+# Serializer para tokens de redefinição de senha
+s = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
+# --- Configuração do Celery ---
+def make_celery(app):
+    celery = Celery(
+        app.import_name,
+        backend=app.config['CELERY_RESULT_BACKEND'],
+        broker=app.config['CELERY_BROKER_URL']
+    )
+    celery.conf.update(app.config)
+
+    class ContextTask(celery.Task):
+        def __call__(self, *args, **kwargs):
+            with app.app_context():
+                return self.run(*args, **kwargs)
+
+    celery.Task = ContextTask
+    return celery
+
+# --- Inicialização das Extensões ---
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 socketio = SocketIO(app)
 mail = Mail(app)
+celery = make_celery(app)
 
-# --- Funções de E-mail Assíncrono ---
-def send_async_email(app, msg):
+# --- Constantes (Carregadas do app.config) ---
+UPLOAD_FOLDER = app.config['UPLOAD_FOLDER']
+ATTACHMENT_FOLDER = app.config['ATTACHMENT_FOLDER']
+CHAT_ATTACHMENT_FOLDER = app.config['CHAT_ATTACHMENT_FOLDER']
+ALLOWED_IMG_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+ALLOWED_ATTACH_EXTENSIONS = {'pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png'}
+
+
+# --- Funções de E-mail Assíncrono (com Celery) ---
+@celery.task
+def send_async_email(subject, recipients, html_body):
+    """Tarefa Celery para enviar e-mail."""
+    msg = Message(subject, recipients=recipients, html=html_body)
     with app.app_context():
-        try: mail.send(msg)
-        except Exception as e: print(f"Erro ao enviar e-mail: {e}")
+        try:
+            mail.send(msg)
+            print(f"E-mail enviado para {recipients}")
+        except Exception as e:
+            print(f"Erro ao enviar e-mail: {e}")
 
 def send_email(subject, recipients, html_body):
-    msg = Message(subject, recipients=recipients); msg.html = html_body
-    thr = Thread(target=send_async_email, args=[app, msg]); thr.start()
-    return thr
+    """Chama a tarefa Celery de forma assíncrona."""
+    send_async_email.delay(subject, recipients, html_body)
+
 
 # --- Funções Auxiliares e Decoradores ---
 def allowed_file(filename, allowed_set): return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_set
@@ -217,6 +239,79 @@ def register():
 @login_required
 def logout(): session.clear(); flash('Você saiu da sua conta.','success'); return redirect(url_for('home'))
 
+# --- ROTAS DE RECUPERAÇÃO DE SENHA ---
+@app.route('/forgot_password', methods=['GET', 'POST'])
+def forgot_password():
+    if session.get('company_id'):
+        return redirect(url_for('home'))
+        
+    if request.method == 'POST':
+        email = request.form.get('email')
+        company = Company.query.filter_by(email=email).first()
+        
+        if company:
+            # Gerar token (válido por 1800 segundos = 30 minutos)
+            token = s.dumps(email, salt='password-reset-salt')
+            reset_url = url_for('reset_password', token=token, _external=True)
+            
+            html_body = render_template(
+                'email/reset_password.html',
+                company_name=company.company_name,
+                reset_url=reset_url
+            )
+            
+            send_email(
+                subject="Recuperação de Senha - Connecta B2B",
+                recipients=[company.email],
+                html_body=html_body
+            )
+            
+            flash('Um link de recuperação foi enviado para o seu e-mail.', 'success')
+            return redirect(url_for('login'))
+        else:
+            flash('E-mail não encontrado em nosso cadastro.', 'error')
+            return redirect(url_for('forgot_password'))
+            
+    return render_template('forgot_password.html')
+
+@app.route('/reset_password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    if session.get('company_id'):
+        return redirect(url_for('home'))
+        
+    try:
+        # Verificar o token (validade de 30 minutos = 1800s)
+        email = s.loads(token, salt='password-reset-salt', max_age=1800)
+    except SignatureExpired:
+        flash('O link de recuperação expirou. Por favor, solicite um novo.', 'error')
+        return redirect(url_for('forgot_password'))
+    except BadTimeSignature:
+        flash('Link de recuperação inválido.', 'error')
+        return redirect(url_for('forgot_password'))
+    except Exception:
+        flash('Link de recuperação inválido.', 'error')
+        return redirect(url_for('forgot_password'))
+
+    company = Company.query.filter_by(email=email).first()
+    if not company:
+        flash('Usuário não encontrado.', 'error')
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        new_password = request.form.get('password')
+        if not new_password or len(new_password) < 8:
+            flash('A senha deve ter pelo menos 8 caracteres.', 'error')
+            return redirect(url_for('reset_password', token=token))
+            
+        company.set_password(new_password)
+        db.session.commit()
+        
+        flash('Sua senha foi redefinida com sucesso! Você já pode fazer o login.', 'success')
+        return redirect(url_for('login'))
+
+    return render_template('reset_password.html')
+# --- FIM DAS ROTAS DE RECUPERAÇÃO DE SENHA ---
+
 @app.route('/dashboard')
 @login_required
 def dashboard():
@@ -309,7 +404,7 @@ def open_rfq_detail(rfq_id):
             rfq_id=rfq.id, supplier_id=session['company_id']
         )
         db.session.add(new_response)
-        db.session.commit()
+        db.session.commit() # Commit da resposta
 
         # Notificar o comprador
         notification = Notification(
@@ -318,7 +413,13 @@ def open_rfq_detail(rfq_id):
             recipient_id=rfq.buyer_id
         )
         db.session.add(notification)
-        db.session.commit()
+        db.session.commit() # Commit da notificação
+
+        # Emitir notificação em tempo real
+        unread_count = db.session.query(Notification).filter_by(recipient_id=rfq.buyer_id, read=False).count()
+        socketio.emit('new_notification', 
+                      {'unread_count': unread_count}, 
+                      room=f"user_{rfq.buyer_id}")
         
         flash('Sua proposta foi enviada!', 'success')
         return redirect(url_for('open_rfq_detail', rfq_id=rfq.id))
@@ -416,8 +517,12 @@ def submit_cart_quotes():
     group_name = request.form.get('group_name')
     if not cart_data: flash('Seu carrinho está vazio.', 'error'); return redirect(url_for('view_cart'))
     if not group_name: flash('O nome do grupo de cotação é obrigatório.', 'error'); return redirect(url_for('view_cart'))
+    
     new_group = QuoteGroup(name=group_name, buyer_id=session['company_id'])
     db.session.add(new_group); db.session.flush()
+
+    supplier_notifications = {} # Rastrear fornecedores para notificar
+
     for product_id, item_data in cart_data.items():
         product = db.session.get(Product, int(product_id))
         if product:
@@ -426,7 +531,17 @@ def submit_cart_quotes():
             db.session.flush()
             notification = Notification(message=f"Nova cotação para {product.name} (Grupo: {group_name}).", link=url_for('quote_detail', quote_id=new_quote.id), recipient_id=product.supplier_id)
             db.session.add(notification)
-    db.session.commit()
+            supplier_notifications[product.supplier_id] = True # Marcar fornecedor para notificação
+
+    db.session.commit() # Commit de cotações e notificações
+
+    # Emitir notificações em tempo real para fornecedores
+    for supplier_id in supplier_notifications.keys():
+        unread_count = db.session.query(Notification).filter_by(recipient_id=supplier_id, read=False).count()
+        socketio.emit('new_notification', 
+                      {'unread_count': unread_count}, 
+                      room=f"user_{supplier_id}")
+
     session.pop('cart', None)
     flash('Cotações enviadas com sucesso!', 'success')
     return redirect(url_for('dashboard'))
@@ -501,6 +616,13 @@ def quote_detail(quote_id):
         if delivery_date_str: quote.delivery_date = datetime.strptime(delivery_date_str, '%Y-%m-%d').date()
         notification = Notification(message=f"Cotação para {quote.product.name} foi respondida.", link=url_for('quote_detail', quote_id=quote.id), recipient_id=quote.buyer_id)
         db.session.add(notification); db.session.commit()
+
+        # Emitir notificação em tempo real
+        unread_count = db.session.query(Notification).filter_by(recipient_id=quote.buyer_id, read=False).count()
+        socketio.emit('new_notification', 
+                      {'unread_count': unread_count}, 
+                      room=f"user_{quote.buyer_id}")
+
         buyer_email = quote.buyer.email; supplier_name = quote.supplier.company_name
         email_html = f"<p>Olá, {quote.buyer.company_name},</p><p>Sua solicitação para <strong>{quote.product.name}</strong> foi respondida por <strong>{supplier_name}</strong>.</p><p>Acesse a plataforma para visualizar.</p>"
         send_email("Sua cotação foi respondida!", [buyer_email], email_html)
@@ -515,6 +637,13 @@ def accept_quote(quote_id):
     quote.status = 'Aceito'
     notification = Notification(message=f"A proposta para {quote.product.name} foi ACEITA.", link=url_for('quote_detail', quote_id=quote.id), recipient_id=quote.supplier_id)
     db.session.add(notification); db.session.commit()
+
+    # Emitir notificação em tempo real
+    unread_count = db.session.query(Notification).filter_by(recipient_id=quote.supplier_id, read=False).count()
+    socketio.emit('new_notification', 
+                  {'unread_count': unread_count}, 
+                  room=f"user_{quote.supplier_id}")
+    
     supplier_email = quote.supplier.email; buyer_name = quote.buyer.company_name
     email_html = f"<p>Parabéns, {quote.supplier.company_name}!</p><p>Sua proposta para <strong>{quote.product.name}</strong> foi aceita por <strong>{buyer_name}</strong>.</p>"
     send_email("Sua proposta foi aceita!", [supplier_email], email_html)
@@ -528,6 +657,13 @@ def decline_quote(quote_id):
     quote.status = 'Recusado'
     notification = Notification(message=f"A proposta para {quote.product.name} foi recusada.", link=url_for('quote_detail', quote_id=quote.id), recipient_id=quote.supplier_id)
     db.session.add(notification); db.session.commit()
+
+    # Emitir notificação em tempo real
+    unread_count = db.session.query(Notification).filter_by(recipient_id=quote.supplier_id, read=False).count()
+    socketio.emit('new_notification', 
+                  {'unread_count': unread_count}, 
+                  room=f"user_{quote.supplier_id}")
+
     supplier_email = quote.supplier.email; buyer_name = quote.buyer.company_name
     email_html = f"<p>Olá, {quote.supplier.company_name},</p><p>Sua proposta para <strong>{quote.product.name}</strong> foi recusada por <strong>{buyer_name}</strong>.</p>"
     send_email("Sua proposta foi recusada.", [supplier_email], email_html)
@@ -709,8 +845,21 @@ def toggle_announcement(announcement_id):
 app.register_blueprint(admin_bp)
 
 # --- EVENTOS DO SOCKET.IO PARA O CHAT ---
+
+@socketio.on('connect')
+def on_connect():
+    """
+    Quando um usuário se conecta, se ele estiver logado,
+    ele entra em uma "sala" privada com seu ID para notificações.
+    """
+    if 'company_id' in session:
+        room = f"user_{session['company_id']}"
+        join_room(room)
+        print(f"Cliente {session.get('company_name', 'Desconhecido')} conectado e entrou na sala {room}")
+
 @socketio.on('join')
 def on_join(data):
+    """Junta-se a uma sala de chat específica da cotação."""
     room = f"quote_{data['quote_id']}"
     join_room(room)
 

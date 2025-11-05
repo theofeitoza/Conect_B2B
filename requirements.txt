@@ -4,3 +4,5 @@ Flask-SocketIO
 eventlet
 Flask-Migrate
 werkzeug
+celery
+redis
